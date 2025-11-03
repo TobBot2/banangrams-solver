@@ -1,0 +1,9 @@
+(executable
+  (name bananagrams)
+  (modules bananagrams)
+  (libraries
+    core
+    lib)
+  (preprocess (pps ppx_jane))
+  (promote
+    (until-clean)))
