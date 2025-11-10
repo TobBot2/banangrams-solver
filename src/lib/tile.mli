@@ -1,73 +1,71 @@
 open Core
 
 (** Tile module representing a character placed at a position on the board *)
+module type VALUE = sig
+  type t [@@deriving sexp, compare, equal]
 
-module Position : sig
-  type t = int * int [@@deriving sexp, compare, equal]
-  
-  val create : int -> int -> t
-  (** [create row col] creates a position *)
-  
-  val row : t -> int
-  val col : t -> int
-  
-  val up : t -> t
-  (** Move one position up (row - 1) *)
-  
-  val down : t -> t
-  (** Move one position down (row + 1) *)
-  
-  val right : t -> t
-  (** Move one position right (col + 1) *)
-  
-  val left : t -> t
-  (** Move one position left (col - 1) *)
-  
-  val neighbor : Direction.t -> t -> t
-  (** Get neighbor position in given direction *)
-  
-  val to_string : t -> string
-  val of_string : string -> t
-  
-  include Comparable.S with type t := t
-end
-
-module Value : sig
-  type t = char [@@deriving sexp, compare, equal]
-  
   val of_char : char -> t
   val to_char : t -> char
   val to_string : t -> string
-  
+
+  val is_letter : t -> bool
+  val uppercase : t -> t
+  val lowercase : t -> t
+
   include Comparable.S with type t := t
 end
 
-(** A tile is a character value at a position *)
-type t = {
-  position : Position.t;
-  value : Value.t;
-} [@@deriving sexp, compare, equal]
+module type S = sig
+  module Position : sig
+    type t = int * int [@@deriving sexp, compare, equal]
 
-val create : Position.t -> char -> t
-(** Create a tile with a position and character value *)
+    val create : int -> int -> t
+    val row : t -> int
+    val col : t -> int
 
-val position : t -> Position.t
-(** Get the position of the tile *)
+    (** Navigation (pure position math) *)
+    val up : t -> t      (** (r-1, c) *)
+    val down : t -> t    (** (r+1, c) *)
+    val right : t -> t   (** (r, c+1) *)
+    val left : t -> t    (** (r, c-1) *)
 
-val value : t -> Value.t
-(** Get the character value of the tile *)
+    val neighbor : Direction.t -> t -> t
+    val manhattan_distance : t -> t -> int
+    val to_string : t -> string
+    val of_string : string -> t
 
-val to_string : t -> string
-(** String representation: "C@(0,0)" *)
+    include Comparable.S with type t := t
+  end
 
-val map_value : (Value.t -> Value.t) -> t -> t
-(** Transform the value while keeping position *)
+  module Value : VALUE
 
-val move_to : Position.t -> t -> t
-(** Move tile to a new position *)
+  (** A tile is a value at a position *)
+  type t = {
+    position : Position.t;
+    value : Value.t;
+  } [@@deriving sexp, compare, equal]
 
-val move : Direction.t -> t -> t
-(** Move tile one step in given direction *)
+module Position : sig
+  type t = int * int [@@deriving sexp, compare, equal]
 
-include Comparable.S with type t := t
-include Sexpable.S with type t := t
+  (** Construction *)
+  val create : Position.t -> Value.t -> t
+  (** For the default [CharValue], this is [Position.t -> char -> t] *)
+
+  (** Accessors *)
+  val position : t -> Position.t
+  val value : t -> Value.t
+
+  (** Display *)
+  val to_string : t -> string  (** e.g., "C@(0,0)" *)
+
+  include Comparable.S with type t := t
+  include Sexpable.S with type t := t
+end
+
+module Make (V : VALUE) : S with module Value = V
+
+(** char-based tiles *)
+module CharValue : VALUE with type t = char
+
+include S with module Value = CharValue
