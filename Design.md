@@ -5,3 +5,8 @@
 3. We plan to use Dream and Core. Also, although not a library, we’ll be using ReScript for frontend work. 
 
 
+5. Basic Banagrams library, supporting key game actions such as placing tiles, grabbing new tiles, and validating the state of the board. Done by 11/23.
+A graphical user interface for players to interact with the banagrams game that connects to the banagrams server hosting the game (localhost). Done by 11/29.
+A banagrams solver which will suggest a move given the board and the player's rack. Done by 12/1.
+Testing code will be written along the way (aiming for 60% on 12/5)
+The rest of the testing code will be written by the final demo day. 
