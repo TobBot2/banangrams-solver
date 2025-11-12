@@ -16,7 +16,7 @@ module Direction : sig
   (** "Horizontal" or "Vertical" *)
 
   val of_string : string -> t
-  (** Parse from string (case-insensitive, accepts "horizontal" / "vertical", etc.) *)
+  (** Parse from string (case-insensitive, accepts "horizontal" / "vertical") *)
 
   include Comparable.S with type t := t
   include Sexpable.S with type t := t
@@ -27,7 +27,7 @@ module Word : sig
   type t = {
     start : Tile.Position.t;
     direction : Direction.t;
-    chars : char list;
+    chars : char list; (* token list *)
   } [@@deriving sexp, compare, equal]
 
   val create : Tile.Position.t -> Direction.t -> char list -> t
