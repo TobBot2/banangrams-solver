@@ -10,3 +10,5 @@ A graphical user interface for players to interact with the banagrams game that 
 A banagrams solver which will suggest a move given the board and the player's rack. Done by 12/1.
 Testing code will be written along the way (aiming for 60% on 12/5)
 The rest of the testing code will be written by the final demo day. 
+
+![Alt text](frontend.png "a title")
