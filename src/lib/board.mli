@@ -34,40 +34,22 @@ val mem : Tile.Position.t -> t -> bool
 
 (** {2 Navigation} *)
 
-val get_up : Tile.Position.t -> t -> Tile.Value.t option
-(** Get value at position above *)
-
-val get_down : Tile.Position.t -> t -> Tile.Value.t option
-(** Get value at position below *)
-
-val get_right : Tile.Position.t -> t -> Tile.Value.t option
-(** Get value at position to the right *)
-
-val get_left : Tile.Position.t -> t -> Tile.Value.t option
-(** Get value at position to the left *)
-
-val get_neighbor : Tile.Position.t -> Direction.t -> t -> Tile.Value.t option
-(** Get value in given direction from position *)
-
-val get_tile_up : Tile.Position.t -> t -> Tile.t option
+val get_up : Tile.Position.t -> t -> Tile.t option
 (** Get full tile at position above *)
 
-val get_tile_down : Tile.Position.t -> t -> Tile.t option
+val get_down : Tile.Position.t -> t -> Tile.t option
 (** Get full tile at position below *)
 
-val get_tile_right : Tile.Position.t -> t -> Tile.t option
+val get_right : Tile.Position.t -> t -> Tile.t option
 (** Get full tile at position to the right *)
 
-val get_tile_left : Tile.Position.t -> t -> Tile.t option
+val get_left : Tile.Position.t -> t -> Tile.t option
 (** Get full tile at position to the left *)
 
-val get_tile_neighbor : Tile.Position.t -> Direction.t -> t -> Tile.t option
+val get_neighbor : Tile.Position.t -> Direction.t -> t -> Tile.t option
 (** Get full tile in given direction from position *)
 
-val neighbors : Tile.Position.t -> t -> (Direction.t * Tile.Value.t) list
-(** Get all adjacent values with their directions *)
-
-val tile_neighbors : Tile.Position.t -> t -> (Direction.t * Tile.t) list
+val neighbors : Tile.Position.t -> t -> (Direction.t * Tile.t) list
 (** Get all adjacent tiles with their directions *)
 
 val has_neighbor : Tile.Position.t -> t -> bool
