@@ -1,71 +1,58 @@
 open Core
 
-(** Tile module representing a character placed at a position on the board *)
+(** Signature for tile values *)
 module type VALUE = sig
   type t [@@deriving sexp, compare, equal]
-
-  val of_char : char -> t
-  val to_char : t -> char
-  val to_string : t -> string
-
-  val is_letter : t -> bool
-  val uppercase : t -> t
-  val lowercase : t -> t
-
-  include Comparable.S with type t := t
+  
+  val to_string : t -> string 
 end
 
-module type S = sig
-  module Position : sig
-    type t = int * int [@@deriving sexp, compare, equal]
+(** Position module - same for all tile types *)
+module Position : sig
+  type t = int * int [@@deriving sexp, compare, equal]
+  
+  val create : int -> int -> t
+  (** [create row col] creates a position *)
+  
+  val row : t -> int
+  val col : t -> int
+  
+  val up : t -> t
+  (** [up (r, c)] returns [(r-1, c)] - one position up *)
+  
+  val down : t -> t
+  (** [down (r, c)] returns [(r+1, c)] - one position down *)
+  
+  val right : t -> t
+  (** [right (r, c)] returns [(r, c+1)] - one position right *)
+  
+  val left : t -> t
+  (** [left (r, c)] returns [(r, c-1)] - one position left *)
+  
+  val to_string : t -> string
 
-    val create : int -> int -> t
-    val row : t -> int
-    val col : t -> int
+end
 
-    (** Navigation (pure position math) *)
-    val up : t -> t      (** (r-1, c) *)
-    val down : t -> t    (** (r+1, c) *)
-    val right : t -> t   (** (r, c+1) *)
-    val left : t -> t    (** (r, c-1) *)
-
-    val neighbor : Direction.t -> t -> t
-    val manhattan_distance : t -> t -> int
-    val to_string : t -> string
-    val of_string : string -> t
-
-    include Comparable.S with type t := t
-  end
-
-  module Value : VALUE
-
-  (** A tile is a value at a position *)
+(** Functor to create Tile module for any value type *)
+module Make (V : VALUE) : sig
+  module Value : VALUE with type t = V.t
+  
+  (** A tile is Record with a value and position *)
   type t = {
     position : Position.t;
     value : Value.t;
   } [@@deriving sexp, compare, equal]
-
-module Position : sig
-  type t = int * int [@@deriving sexp, compare, equal]
-
-  (** Construction *)
-  val create : Position.t -> Value.t -> t
-  (** For the default [CharValue], this is [Position.t -> char -> t] *)
-
-  (** Accessors *)
+  
+  val create : Position.t -> V.t -> t
+  (** Create a tile with a position and value *)
+  
   val position : t -> Position.t
+  (** Get the position of the tile *)
+  
   val value : t -> Value.t
+  (** Get the value of the tile *)
+  
+  val to_string : t -> string
+  (** String representation: "V@(row,col)" *)
 
-  (** Display *)
-  val to_string : t -> string  (** e.g., "C@(0,0)" *)
-
-  include Comparable.S with type t := t
-  include Sexpable.S with type t := t
 end
-
-module Make (V : VALUE) : S with module Value = V
-
-(** char-based tiles *)
-module CharValue : VALUE with type t = char
-
-include S with module Value = CharValue
