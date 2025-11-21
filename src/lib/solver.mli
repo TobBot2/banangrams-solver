@@ -19,6 +19,6 @@ val place_first_word_on_board : Board.t -> Word.t -> Board.t
 val remove_tiles_from_rack : Tile.t list -> Tile.t list -> Tile.t list
 (** [remove_tiles_from_rack rack tiles] returns new rack equal to old [rack] with [tiles] removed*)
 
-val play_word_on_board : Utils.t -> Tile.t list -> Board.t -> option Board.t
+val play_word_on_board : Utils.t -> Tile.t list -> Board.t -> (Board.t * Tile.t list) option
 (** [play_word_on_board utils rack board] returns Some new board ([board] with added
-    word made from [rack] tiles). Or None if no new word found *)
+    word made from [rack] tiles) AND new rack. Or None if no new word found *)
