@@ -16,12 +16,12 @@
     "@rescript/core": "^1.6.1",
     "@rescript/react": "^0.13.1",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "rescript": "^11.1.4"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.3",
     "@vitejs/plugin-react": "^4.3.4",
+    "rescript": "^11.1.4",
     "tailwindcss": "^4.0.3",
     "vite": "^6.0.0"
   }

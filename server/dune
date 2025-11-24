@@ -1,0 +1,15 @@
+(executable
+ (name server)
+ (libraries dream))
+
+; Copy index.html from client/dist into server’s build directory
+;(rule
+; (targets index.html)
+; (deps ../client/dist/index.html)
+; (action (copy ../client/dist/index.html index.html)))
+
+; Copy the entire assets/ directory from client/dist
+;(rule
+; (targets assets)
+; (deps ../client/dist/assets)
+; (action (copy_directory ../client/dist/assets assets)))

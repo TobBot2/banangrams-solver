@@ -1,4 +1,4 @@
-@module("./assets/rescript-logo.svg")
+/*@module("./assets/rescript-logo.svg")
 external rescript: string = "default"
 
 @module("./assets/vite.svg")
@@ -33,31 +33,253 @@ let make = () => {
     </p>
   </div>
 
+}*/
 
-  /*let fenLink = "https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation"
+/*open Belt
+open ReactEvent
 
-  <div className="p-6">
-    // Header
-    <h1 className="text-3xl font-semibold"> {"Chess Move Suggester"->React.string} </h1>
-    <p>
-      {React.string("Please input your current chessboard state (in ")}
-      <a className="text-blue-600 hover:underline" href=fenLink> {React.string("FEN Format")} </a>
-      {React.string("), the color to move (white or black), and the AI difficulty level (1 to 3).")}
-    </p>
-    <br />
-    <h2 className="text-xl font-semibold"> {React.string("Sample boards:")} </h2>
-    <p>
-      {React.string("Default board: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR (White to move)")}
-    </p>
-    <p>
-      {React.string("Board with one possible move: 7k/3n1KRP/6P1/8/8/8/8/4r3 (White to move)")}
-    </p>
-    <br />
-    // Create form, most of the logic is in components/Form.res
-    <div className="flex">
-      /*<Form />*/
-    </div>
-    <br />
-  </div> */
+@react.component
+let make = () => {
+  // ----------------------------
+  // Letter Bar (21 letters)
+  // ----------------------------
+  let initialLetters = [
+    "A","B","C","D","E","F","G",
+    "H","I","J","K","L","M","N",
+    "O","P","Q","R","S","T","U"
+  ]
 
+  let (letters, _setLetters) = React.useState(() => initialLetters)
+
+  // ----------------------------
+  // Grid dimensions
+  // ----------------------------
+  let rows = 10
+  let cols = 10
+
+  // ----------------------------
+  // Initialize grid: array<array<option<string>>>
+  // ----------------------------
+  let (grid, setGrid) =
+    React.useState(() =>
+      Array.make(
+        rows,
+        Array.make(cols, None)
+      )
+    )
+
+  // ----------------------------
+  // Track which letter is being dragged
+  // ----------------------------
+  let (dragged, setDragged) = React.useState(() => None)
+
+  // Drag start
+let handleDragStart = (letter: string) => (_e: ReactEvent.Synthetic.t) =>
+  setDragged(_ => Some(letter))
+
+  // Allow dropping
+  let handleDragOver = (_e: ReactEvent.Synthetic.t) =>
+    _e->ReactEvent.Synthetic.preventDefault
+
+  // Drop into a grid cell
+let handleDrop = (r: int, c: int) => (_e: ReactEvent.Synthetic.t) => {
+  _e->ReactEvent.Synthetic.preventDefault
+  switch dragged {
+  | None => ()
+  | Some(letter) =>
+      setGrid(grid =>
+        grid
+        ->Array.mapWithIndex((rowIdx, row) =>
+          row
+          ->Array.mapWithIndex((colIdx, cell) =>
+            if rowIdx == r && colIdx == c {
+              Some(letter)
+            } else {
+              cell
+            }
+          )
+        )
+      )
+      setDragged(_ => None)
+  }
 }
+
+  /* ================================
+     Render UI
+     ================================ */
+
+  <div className="p-8">
+
+    /* ================================
+        TOP DRAGGABLE LETTER BAR
+        ================================ */
+    <div className="flex gap-3 mb-8 flex-wrap">
+      {letters
+      ->Array.map(letter =>
+        <div
+          key=letter
+          draggable=true
+          onDragStart={handleDragStart(letter)}
+          className="cursor-move px-4 py-2 bg-blue-300 rounded shadow-md text-xl font-bold select-none"
+        >
+          {React.string(letter)}
+        </div>
+      )
+      ->React.array}
+    </div>
+
+    {/* ================================
+        THE GRID
+        ================================ */}
+    <div
+      className="grid gap-1"
+      style={ReactDOM.Style.make(
+        ~gridTemplateColumns=`repeat(${cols}, 40px)`,
+        ~gridTemplateRows=`repeat(${rows}, 40px)`,
+        (),
+      )}
+    >
+      {grid
+      ->Array.mapi((rowIdx, row) =>
+        row
+        ->Array.mapi((colIdx, cell) =>
+          <div
+            key={`${rowIdx}-${colIdx}`}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop(rowIdx, colIdx)}
+            className="w-10 h-10 border border-gray-400 bg-white flex items-center justify-center"
+          >
+            {switch cell {
+            | None => React.null
+            | Some(letter) => React.string(letter)
+            }}
+          </div>
+        )
+      )
+      ->Array.concatMany
+      ->React.array}
+    </div>
+  </div>
+}*/
+open Belt
+
+@react.component
+let make = () => {
+  // ----------------------------
+  // Top letters (21 tiles)
+  // ----------------------------
+  let initialLetters = [
+    "A","B","C","D","E","F","G",
+    "H","I","J","K","L","M","N",
+    "O","P","Q","R","S","T","U"
+  ]
+
+  let (letters, _setLetters) = React.useState(() => initialLetters)
+
+  // ----------------------------
+  // Grid dimensions
+  // ----------------------------
+  let rows = 10
+  let cols = 10
+
+  // ----------------------------
+  // Grid state: array<array<option<string>>>
+  // ----------------------------
+  let (grid, setGrid) =
+    React.useState(() =>
+      Array.make(rows, Array.make(cols, None))
+    )
+
+  // ----------------------------
+  // Dragged letter state
+  // ----------------------------
+  let (dragged, setDragged) = React.useState(() => None)
+
+  // ----------------------------
+  // Drag event handlers
+  // ----------------------------
+  let handleDragStart = (letter: string) => (e: ReactEvent.Synthetic.t) => {
+    e->ReactEvent.Synthetic.preventDefault
+    setDragged(_ => Some(letter))
+  }
+
+  let handleDragOver = (e: ReactEvent.Synthetic.t) =>
+    e->ReactEvent.Synthetic.preventDefault
+
+  let handleDrop = (r: int, c: int) => (e: ReactEvent.Synthetic.t) => {
+    e->ReactEvent.Synthetic.preventDefault
+    switch dragged {
+    | None => ()
+    | Some(letter) =>
+        setGrid(grid =>
+          grid
+          ->Belt.Array.mapWithIndex((rowIdx, row) =>
+            row
+            ->Belt.Array.mapWithIndex((colIdx, cell) =>
+              if rowIdx == r && colIdx == c {
+                Some(letter)
+              } else {
+                cell
+              }
+            )
+          )
+        )
+        setDragged(_ => None)
+    }
+  }
+
+  // ----------------------------
+  // Render
+  // ----------------------------
+  <div className="p-8">
+
+    /* Top draggable letters */
+    <div className="flex gap-3 mb-8 flex-wrap">
+      {letters
+      ->Array.map(letter =>
+        <div
+          key=letter
+          draggable=true
+          onDragStart={handleDragStart(letter)}
+          className="cursor-move px-4 py-2 bg-blue-300 rounded shadow-md text-xl font-bold select-none"
+        >
+          {React.string(letter)}
+        </div>
+      )
+      ->React.array}
+    </div>
+
+    {/* Grid */}
+    <div
+      className="grid gap-1"
+      style={ReactDOM.Style.make(
+        ~gridTemplateColumns=`repeat(${cols}, 40px)`,
+        ~gridTemplateRows=`repeat(${rows}, 40px)`,
+        (),
+      )}
+    >
+      {grid
+      ->Belt.Array.mapWithIndex((rowIdx, row) =>
+        row
+        ->Belt.Array.mapWithIndex((colIdx, cell) =>
+          <div
+            key={`${rowIdx}-${colIdx}`}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop(rowIdx, colIdx)}
+            className="w-10 h-10 border border-gray-400 bg-white flex items-center justify-center"
+          >
+            {switch cell {
+            | None => React.null
+            | Some(letter) => React.string(letter)
+            }}
+          </div>
+        )
+      )
+      ->Belt.Array.flatten
+      ->React.array}
+    </div>
+  </div>
+}
+
+
+
