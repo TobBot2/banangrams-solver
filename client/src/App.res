@@ -1,26 +1,60 @@
-@module("./assets/rescript-logo.svg")
-external rescript: string = "default"
+//@module("./assets/rescript-logo.svg")
+//external rescript: string = "default"
 
-@module("./assets/vite.svg")
-external vite: string = "default"
+//@module("./assets/vite.svg")
+//external vite: string = "default"
+
+@val external fetch: string => promise<'response> = "fetch"
+
+type response
+@send external json: response => promise<JSON.t> = "json"
 
 @react.component
 let make = () => {
 
-  let initialLetters = [
-        "A","B","C","D","E","F","G",
-        "H","I","J","K","L","M","N",
-        "O","P","Q","R","S","T","U"
-      ]
+  //let initialLetters = [
+  //      "A","B","C","D","E","F","G",
+  //      "H","I","J","K","L","M","N",
+  //      "O","P","Q","R","S","T","U"
+  //    ]
   
   // Grid dimensions
-      let gridRows = 5
-      let gridCols = 5
+      let gridRows = 20
+      let gridCols = 20
     
-      let (letters, setLetters) = React.useState(() => initialLetters)
+      let (letters, setLetters) = React.useState(() => [])
       let (dragged, setDragged) = React.useState(() => None)
       let (grid, setGrid) = React.useState(() => Array.make(~length=gridRows * gridCols, None))
-    
+      let (loading, setLoading) = React.useState(() => true)
+
+    // Fetch tiles from server on mount
+      React.useEffect0(() => {
+        let fetchTiles = async () => {
+          try {
+            let response = await fetch("http://localhost:8080/get_random_tiles?count=21")
+            let json = await response->json
+            
+            // Parse the JSON array of strings
+            let tiles = switch json->JSON.Decode.array {
+            | Some(arr) => arr->Array.filterMap(JSON.Decode.string)
+            | None => []
+            }
+            
+            setLetters(_ => tiles)
+            setLoading(_ => false)
+          } catch {
+          | _ => {
+              Console.log("Failed to fetch tiles")
+              setLoading(_ => false)
+            }
+          }
+        }
+        fetchTiles()->ignore
+        None
+      })
+
+
+
   let handleDragStart = letter => e => {
         //e->ReactEvent.Synthetic.preventDefault
         setDragged(_ => Some(letter))
@@ -65,11 +99,10 @@ let make = () => {
         setLetters(prevLetters => Array.concat(prevLetters, [letter]))
       }
 
-
   
-      <div className="max-w-4xl mx-auto p-8">
+      <div className="max-w-4xl mx-auto p-8 overflow-auto">
         <h2 className="text-2xl font-bold mb-4"> {"Available Letters"->React.string} </h2>
-        <div className="flex gap-3 mb-8 flex-wrap min-h-20 p-4 bg-gray-100 rounded">
+        <div className="flex gap-3 mb-8 flex-wrap min-h-20 p-4 bg-gray-100 rounded overflow-visible">
           {letters->Array.length > 0
             ? letters
               ->Array.map(letter =>
@@ -87,31 +120,33 @@ let make = () => {
           }
         </div>
     
-        <h2 className="text-2xl font-bold mb-4"> {"Grid"->React.string} </h2>
-        <div className="grid grid-cols-5 gap-2">
-          {grid
-            ->Array.mapWithIndex((item, index) =>
-              <div
-                key={Int.toString(index)}
-                onDrop={handleDrop(index)}
-                onDragOver={handleDragOver}
-                className="w-20 h-20 border-2 border-dashed border-gray-400 rounded flex items-center justify-center bg-white hover:bg-gray-50"
-              >
-                {switch item {
-                | Some(letter) =>
-                  <div
-                    onClick={_ => handleRemoveFromGrid(index, letter)}
-                    className="cursor-pointer px-4 py-2 bg-green-400 rounded shadow-md text-xl font-bold select-none hover:bg-red-400"
-                    title="Click to remove"
-                  >
-                    {React.string(letter)}
-                  </div>
-                | None => React.null
-                }}
-              </div>
-            )
-            ->React.array}
-        </div>
+<h2 className="text-2xl font-bold mb-4"> {"Grid"->React.string} </h2>
+    <div className="inline-block border border-gray-400">
+      <div style={ReactDOM.Style.make(~display="grid", ~gridTemplateColumns="repeat(20, 2rem)", ())}>
+        {grid
+          ->Array.mapWithIndex((item, index) =>
+            <div
+              key={Int.toString(index)}
+              onDrop={handleDrop(index)}
+              onDragOver={handleDragOver}
+              className="w-8 h-8 border border-gray-300 flex items-center justify-center bg-white hover:bg-gray-50"
+            >
+              {switch item {
+              | Some(letter) =>
+                <div
+                  onClick={_ => handleRemoveFromGrid(index, letter)}
+                  className="cursor-pointer w-full h-full flex items-center justify-center bg-green-400 text-sm font-bold select-none hover:bg-red-400"
+                  title="Click to remove"
+                >
+                  {React.string(letter)}
+                </div>
+              | None => React.null
+              }}
+            </div>
+          )
+          ->React.array}
+      </div>
+    </div>
         
         <p className="mt-4 text-sm text-gray-600">
           {"Drag letters to the grid. Click on placed letters to remove them."->React.string}

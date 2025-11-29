@@ -1,6 +1,6 @@
 (executable
  (name server)
- (libraries dream))
+ (libraries dream core))
 
 ; Copy index.html from client/dist into server’s build directory
 ;(rule

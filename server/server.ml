@@ -1,4 +1,90 @@
-(*open Core*)
+open Core
+(*open Lib.Solver*)
+(*open Dream*)
+
+  (*when tile dragged from rack in frontend, remove from rack in backend*)
+  (*initial tiles are a random selection from the bag - peek_random_tiles_from_bag*)
+ (* tile bag: make a list of potential tiles *)
+
+(*getting the letters from the file: should we move this to a utils in lib?*)
+let read_letter_list filename =
+  let ic = In_channel.create filename in
+  let rec read_lines acc =
+    match In_channel.input_line ic with
+    | Some line ->
+        let parts = String.split_on_chars line ~on:['#'] in
+        (match parts with
+        | count_str :: letter_str :: _ ->
+            let count = int_of_string (String.strip count_str) in
+            let letter = String.strip letter_str |> fun s -> s.[0] in
+            let letters = List.init count ~f:(fun _ -> letter) in
+            read_lines (letters @ acc)
+        | _ -> read_lines acc)
+    | None ->
+        In_channel.close ic;
+        List.rev acc
+  in
+  read_lines []
+
+(*need to add an error for the file not found*)
+let tile_bag = read_letter_list "../banana-dist.txt"
+
+(*temporarily moving peek b/c lib dune is not building right now.*)
+(** [peek_random_tiles_from_bag tile_bag count] returns [count] tiles from [tile_bag] *)
+let peek_random_tiles_from_bag tile_bag count =
+  (* generate random indices to pull from *)
+  let rand_indices = List.init count ~f:(fun _ -> Random.int (List.length tile_bag)) in
+  (* loop through tiles, accumulating if index matches a randomly generated one *)
+  List.foldi tile_bag ~init:[] ~f:(fun i acc tile ->
+    if List.exists rand_indices ~f:(fun idx -> idx = i) then tile :: acc
+    else acc
+  )
+
+let get_random_tiles : Dream.route =
+  Dream.get "/get_random_tiles" (fun request ->
+      let count = 
+        match Dream.query request "count" with
+        | Some s -> (try int_of_string s with _ -> 21)
+        | None -> 21
+      in
+      
+      (*let tiles = Lib.Solver.peek_random_tiles_from_bag tile_bag count in*)
+      let tiles = peek_random_tiles_from_bag tile_bag count in
+      let tiles_json = 
+        tiles 
+        |> List.map ~f:(fun c -> `String (String.make 1 c))
+        |> fun lst -> `List lst
+        |> Yojson.Basic.to_string
+      in
+      
+      Dream.json ~status:`OK
+        ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+        tiles_json
+  )
+
+
+
+(*let () =
+  Dream.run
+  @@ Dream.logger
+  @@ Dream.router [
+    Dream.get "/**" (Dream.static "../client/dist"); (*May only work in dev mode?*)
+  ]*)
+
+let () =
+  Dream.run ~port:8080
+  @@ Dream.logger
+  @@ Dream.router [
+       get_random_tiles;
+     ]
+
+
+
+
+
+
+
+
 (*open Chess_ai
 
 let check_valid_board (board : string option) : bool =
@@ -86,11 +172,4 @@ let () =
     Dream.get "/" (fun _ -> Dream.from_file "client/dist/index.html");
     Dream.get "/assets/**" (Dream.static "client/dist/assets");
   ]*)
-
-let () =
-  Dream.run
-  @@ Dream.logger
-  @@ Dream.router [
-    Dream.get "/**" (Dream.static "../client/dist"); (*May only work in dev mode?*)
-  ]
 
