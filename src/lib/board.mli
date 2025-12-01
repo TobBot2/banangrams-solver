@@ -8,8 +8,6 @@ type t [@@deriving sexp, compare]
 val empty : t
 (** Create an empty board *)
 
-(** {2 Basic Operations} *)
-
 val set : Tile.t -> t -> t
 (** [set tile board] returns a NEW board with [tile] placed at its position.
     Overwrites if position already occupied. *)
@@ -32,8 +30,6 @@ val get_tile : Tile.Position.t -> t -> Tile.t option
 val mem : Tile.Position.t -> t -> bool
 (** [mem pos board] returns true if position has a tile *)
 
-(** {2 Navigation} *)
-
 val get_up : Tile.Position.t -> t -> Tile.t option
 (** Get full tile at position above *)
 
@@ -55,7 +51,6 @@ val neighbors : Tile.Position.t -> t -> (Direction.t * Tile.t) list
 val has_neighbor : Tile.Position.t -> t -> bool
 (** Check if position has at least one adjacent tile *)
 
-(** {2 Tile Operations} *)
 
 val place_tile : Tile.t -> t -> t
 (** Alias for [set] - place a tile on the board *)
@@ -74,8 +69,6 @@ val remove_tiles : Tile.Position.t list -> t -> (Tile.t list * t)
 val move_tile : Tile.Position.t -> Tile.Position.t -> t -> (t, string) result
 (** [move_tile from_pos to_pos board] moves tile from one position to another.
     Returns Error if no tile at from_pos or to_pos is occupied. *)
-
-(** {2 Collection Operations} *)
 
 val to_tiles : t -> Tile.t list
 (** Convert all positions and values to Tile list *)
@@ -127,8 +120,6 @@ val positions : t -> Tile.Position.t list
 
 val values : t -> Tile.Value.t list
 (** Get all values on the board *)
-
-(** {2 Display} *)
 
 val to_string : t -> string
 (** ASCII representation of the board - mostly for debugging *)
