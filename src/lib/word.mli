@@ -1,43 +1,14 @@
 open Core
 
-(** Represents a word found on the board *)
-module Direction : sig
-  (** Direction for word placement and navigation *)
-
-  type t =
-    | Horizontal
-    | Vertical
-  [@@deriving sexp, compare, equal, enumerate]
-
-  val opposite : t -> t
-  (** [opposite Horizontal] = Vertical and vice versa *)
-
-  val to_string : t -> string
-  (** "Horizontal" or "Vertical" *)
-
-  val of_string : string -> t
-  (** Parse from string (case-insensitive, accepts "horizontal" / "vertical") *)
-
-  include Comparable.S with type t := t
-  include Sexpable.S with type t := t
-end
-
 module Word : sig
 
-  type t = {
-    start : Tile.Position.t;
-    direction : Direction.t;
-    chars : char list; (* token list *)
-  } [@@deriving sexp, compare, equal]
+  type t = Tile.t list [@@deriving sexp, compare, equal]
 
-  val create : Tile.Position.t -> Direction.t -> char list -> t
+  val create : Tile.Position.t  -> Tile.Value.t list -> t
   (** Create a word *)
 
   val start : t -> Tile.Position.t
   (** Starting position of the word *)
-
-  val direction : t -> Direction.t
-  (** Direction of the word *)
 
   val chars : t -> char list
   (** Characters in the word *)
@@ -48,13 +19,6 @@ module Word : sig
   val length : t -> int
   (** Number of characters in word *)
 
-  val positions : t -> Tile.Position.t list
-  (** All positions on the board used up by this word *)
-
-  val contains_position : Tile.Position.t -> t -> bool
-  (** Check if word is within given position *)
-
-  include Comparable.S with type t := t
-  include Sexpable.S with type t := t
-
+  val of_tiles : t -> int
+  (** Need to implemenet for Validation *)
 end

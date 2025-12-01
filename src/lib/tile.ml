@@ -11,6 +11,7 @@ module Char_value = struct
     let to_string c = String.make 1 c
 end
 
+(** module Char_tile = Tile.Make(Char_value) **)
 module Position = struct
   type t = int * int [@@deriving sexp, compare, equal]
   
