@@ -62,6 +62,68 @@ let get_random_tiles : Dream.route =
         tiles_json
   )
 
+let hint : Dream.route =
+  Dream.get "/hint" (fun _ ->
+      
+      (*let word = Lib.Solver.get_the_word*)
+      let word = "hello" in
+      
+      (*returning a string for now: will return a character array later!*)
+       let hint_json = `String word |> Yojson.Basic.to_string in
+      Dream.json ~status:`OK
+        ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+        hint_json
+
+      (*let hint_json = 
+        word
+        |> List.map ~f:(fun c -> `String (String.make 1 c))
+        |> fun lst -> `List lst
+        |> Yojson.Basic.to_string
+      in*)
+
+  )
+
+  let place_tile : Dream.route =
+  Dream.get "/place_tile" (fun request ->
+      let letter = Dream.query request "letter" in
+      let x = Dream.query request "x" in
+      let y = Dream.query request "y" in
+      
+      (match (letter, x, y) with
+      | (Some l, Some x_str, Some y_str) ->
+          (try
+            let x_int = int_of_string x_str in
+            let y_int = int_of_string y_str in
+            (* Do something with the placement *)
+            Printf.printf "Placed tile '%s' at (%d, %d)\n%!" l x_int y_int;
+            Dream.json ~status:`OK "\"success\""
+              ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+          with _ ->
+            Dream.json ~status:`Bad_Request "\"Invalid coordinates\"")
+      | _ ->
+          Dream.json ~status:`Bad_Request "\"Missing parameters\"")
+  )
+
+let remove_tile : Dream.route =
+  Dream.get "/remove_tile" (fun request ->
+      let x = Dream.query request "x" in
+      let y = Dream.query request "y" in
+      
+      (match (x, y) with
+      | (Some x_str, Some y_str) ->
+          (try
+            let x_int = int_of_string x_str in
+            let y_int = int_of_string y_str in
+            (* Do something with the removal *)
+            Printf.printf "Removed tile at (%d, %d)\n%!" x_int y_int;
+            Dream.json ~status:`OK "\"success\""
+              ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+          with _ ->
+            Dream.json ~status:`Bad_Request "\"Invalid coordinates\"")
+      | _ ->
+          Dream.json ~status:`Bad_Request "\"Missing parameters\"")
+  )
+
 
 
 (*let () =
@@ -76,6 +138,9 @@ let () =
   @@ Dream.logger
   @@ Dream.router [
        get_random_tiles;
+       hint;
+       place_tile;
+       remove_tile;
      ]
 
 

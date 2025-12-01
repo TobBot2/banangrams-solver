@@ -17,13 +17,52 @@ function App(props) {
   var setDragged = match$1[1];
   var dragged = match$1[0];
   var match$2 = React.useState(function () {
-        return Core__Array.make(400, undefined);
+        return Core__Array.make(651, undefined);
       });
   var setGrid = match$2[1];
   var match$3 = React.useState(function () {
         return true;
       });
   var setLoading = match$3[1];
+  var match$4 = React.useState(function () {
+        
+      });
+  var setHintWord = match$4[1];
+  var hintWord = match$4[0];
+  var indexToCoord = function (index) {
+    var row = index / 21 | 0;
+    var col = index % 21;
+    var centerRow = 15;
+    var centerCol = 10;
+    var x = col - centerCol | 0;
+    var y = centerRow - row | 0;
+    return [
+            x,
+            y
+          ];
+  };
+  var sendTile = async function (letter, x, y) {
+    try {
+      var response = await fetch("http://localhost:8080/place_tile?letter=" + letter + "&x=" + x.toString() + "&y=" + y.toString());
+      await response.json();
+      return ;
+    }
+    catch (exn){
+      console.log("Failed to send coordinate");
+      return ;
+    }
+  };
+  var sendTileRemoval = async function (x, y) {
+    try {
+      var response = await fetch("http://localhost:8080/remove_tile?x=" + x.toString() + "&y=" + y.toString());
+      await response.json();
+      return ;
+    }
+    catch (exn){
+      console.log("Failed to send tile removal");
+      return ;
+    }
+  };
   React.useEffect((function () {
           var fetchTiles = async function () {
             try {
@@ -47,6 +86,23 @@ function App(props) {
           };
           fetchTiles();
         }), []);
+  var handleHint = async function () {
+    try {
+      var response = await fetch("http://localhost:8080/hint");
+      var json = await response.json();
+      var w = Core__JSON.Decode.string(json);
+      var word = w !== undefined ? w : "";
+      return setHintWord(function (param) {
+                  return word;
+                });
+    }
+    catch (exn){
+      console.log("Failed to fetch hint");
+      return setHintWord(function (param) {
+                  
+                });
+    }
+  };
   var handleDrop = function (index) {
     return function (e) {
       e.preventDefault();
@@ -54,6 +110,14 @@ function App(props) {
         setGrid(function (prevGrid) {
               var newGrid = prevGrid.slice();
               newGrid[index] = dragged;
+              var match = indexToCoord(index);
+              var y = match[1];
+              var x = match[0];
+              console.log("Coordinate:", [
+                    x,
+                    y
+                  ]);
+              sendTile(dragged, x, y);
               return newGrid;
             });
         setLetters(function (prevLetters) {
@@ -73,12 +137,49 @@ function App(props) {
   };
   return JsxRuntime.jsxs("div", {
               children: [
-                JsxRuntime.jsx("h2", {
-                      children: "Available Letters",
-                      className: "text-2xl font-bold mb-4"
+                JsxRuntime.jsxs("div", {
+                      children: [
+                        JsxRuntime.jsxs("div", {
+                              children: [
+                                JsxRuntime.jsx("h2", {
+                                      children: "Available Letters",
+                                      className: "text-2xl font-bold"
+                                    }),
+                                hintWord !== undefined ? JsxRuntime.jsx("p", {
+                                        children: "Hint: " + hintWord,
+                                        className: "text-sm text-blue-600 mt-1"
+                                      }) : null,
+                                JsxRuntime.jsx("p", {
+                                      children: "Please place your first letter in the middle of the board (on the blue grid cell)",
+                                      className: "text-sm text-blue-600 mt-1"
+                                    })
+                              ]
+                            }),
+                        JsxRuntime.jsxs("div", {
+                              children: [
+                                JsxRuntime.jsx("button", {
+                                      children: "Hint",
+                                      className: "px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600",
+                                      onClick: (function (param) {
+                                          handleHint();
+                                        })
+                                    }),
+                                JsxRuntime.jsx("button", {
+                                      children: "Button 2",
+                                      className: "px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                    }),
+                                JsxRuntime.jsx("button", {
+                                      children: "Button 3",
+                                      className: "px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                    })
+                              ],
+                              className: "flex gap-2"
+                            })
+                      ],
+                      className: "flex items-center justify-between mb-4"
                     }),
                 JsxRuntime.jsx("div", {
-                      children: letters.length > 0 ? letters.map(function (letter) {
+                      children: letters.length > 0 ? letters.map(function (letter, index) {
                               return JsxRuntime.jsx("div", {
                                           children: letter,
                                           className: "cursor-move px-4 py-2 bg-blue-300 rounded shadow-md text-xl font-bold select-none hover:bg-blue-400",
@@ -88,7 +189,7 @@ function App(props) {
                                                     return letter;
                                                   });
                                             })
-                                        }, letter);
+                                        }, letter + "-" + index.toString());
                             }) : JsxRuntime.jsx("div", {
                               children: "No letters available",
                               className: "text-gray-500"
@@ -102,12 +203,23 @@ function App(props) {
                 JsxRuntime.jsx("div", {
                       children: JsxRuntime.jsx("div", {
                             children: match$2[0].map(function (item, index) {
+                                  var centerIndex = 325;
+                                  var isCenter = index === centerIndex;
+                                  var bgColor = isCenter ? "bg-blue-200" : "bg-white";
                                   return JsxRuntime.jsx("div", {
                                               children: item !== undefined ? JsxRuntime.jsx("div", {
                                                       children: item,
                                                       className: "cursor-pointer w-full h-full flex items-center justify-center bg-green-400 text-sm font-bold select-none hover:bg-red-400",
                                                       title: "Click to remove",
                                                       onClick: (function (param) {
+                                                          var match = indexToCoord(index);
+                                                          var y = match[1];
+                                                          var x = match[0];
+                                                          console.log("Coordinate:", [
+                                                                x,
+                                                                y
+                                                              ]);
+                                                          sendTileRemoval(x, y);
                                                           setGrid(function (prevGrid) {
                                                                 var newGrid = prevGrid.slice();
                                                                 newGrid[index] = undefined;
@@ -118,14 +230,14 @@ function App(props) {
                                                               });
                                                         })
                                                     }) : null,
-                                              className: "w-8 h-8 border border-gray-300 flex items-center justify-center bg-white hover:bg-gray-50",
+                                              className: "w-8 h-8 border border-gray-300 flex items-center justify-center hover:bg-gray-50 " + bgColor,
                                               onDragOver: handleDragOver,
                                               onDrop: handleDrop(index)
                                             }, index.toString());
                                 }),
                             style: {
                               display: "grid",
-                              gridTemplateColumns: "repeat(20, 2rem)"
+                              gridTemplateColumns: "repeat(21, 2rem)"
                             }
                           }),
                       className: "inline-block border border-gray-400"
@@ -135,7 +247,7 @@ function App(props) {
                       className: "mt-4 text-sm text-gray-600"
                     })
               ],
-              className: "max-w-4xl mx-auto p-8 overflow-auto"
+              className: "max-w-4xl mx-auto p-8 pt-120 overflow-auto"
             });
 }
 

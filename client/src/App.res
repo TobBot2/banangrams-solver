@@ -19,13 +19,50 @@ let make = () => {
   //    ]
   
   // Grid dimensions
-      let gridRows = 20
-      let gridCols = 20
+      let gridRows = 31
+      let gridCols = 21
     
       let (letters, setLetters) = React.useState(() => [])
       let (dragged, setDragged) = React.useState(() => None)
       let (grid, setGrid) = React.useState(() => Array.make(~length=gridRows * gridCols, None))
       let (loading, setLoading) = React.useState(() => true)
+      let (hintWord, setHintWord) = React.useState(() => None)
+
+
+    //helper function to get coordinates instead of index
+    let indexToCoord = index => {
+  let row = index / gridCols
+  let col = mod(index, gridCols)
+  let centerRow = gridRows / 2
+  let centerCol = gridCols / 2
+  let x = col - centerCol
+  let y = centerRow - row  // Subtract to make y positive going up
+  (x, y)
+}
+
+let sendTile = async (letter, x, y) => {
+  try {
+    let response = await fetch(
+      "http://localhost:8080/place_tile?letter=" ++ letter ++ "&x=" ++ Int.toString(x) ++ "&y=" ++ Int.toString(y)
+    )
+    let _ = await response->json
+    ()
+  } catch {
+  | _ => Console.log("Failed to send coordinate")
+  }
+}
+
+let sendTileRemoval = async (x, y) => {
+  try {
+    let response = await fetch(
+      "http://localhost:8080/remove_tile?x=" ++ Int.toString(x) ++ "&y=" ++ Int.toString(y)
+    )
+    let _ = await response->json
+    ()
+  } catch {
+  | _ => Console.log("Failed to send tile removal")
+  }
+}
 
     // Fetch tiles from server on mount
       React.useEffect0(() => {
@@ -53,6 +90,27 @@ let make = () => {
         None
       })
 
+      
+      let handleHint = async () => {
+  try {
+    let response = await fetch("http://localhost:8080/hint")
+    let json = await response->json
+    
+    // Assuming the server returns a word string
+    let word = switch json->JSON.Decode.string {
+    | Some(w) => w
+    | None => ""
+    }
+    
+    setHintWord(_ => Some(word))
+  } catch {
+  | _ => {
+      Console.log("Failed to fetch hint")
+      setHintWord(_ => None)
+    }
+  }
+}
+
 
 
   let handleDragStart = letter => e => {
@@ -60,7 +118,7 @@ let make = () => {
         setDragged(_ => Some(letter))
       }
     
-      let handleDrop = index => e => {
+  let handleDrop = index => e => {
         e->ReactEvent.Synthetic.preventDefault
         
         switch dragged {
@@ -69,7 +127,11 @@ let make = () => {
             setGrid(prevGrid => {
               let newGrid = Array.copy(prevGrid)
               newGrid[index] = Some(letter)
+              let (x,y) = indexToCoord(index)
+              Console.log2("Coordinate:", (x, y))
+              sendTile(letter,x, y)->ignore
               newGrid
+              //at this point we would validate the board
             })
             
             // Remove letter from available letters
@@ -88,6 +150,9 @@ let make = () => {
       }
     
       let handleRemoveFromGrid = (index, letter) => {
+        let (x,y) = indexToCoord(index)
+        Console.log2("Coordinate:", (x, y))
+        sendTileRemoval(x, y)->ignore
         // Remove from grid
         setGrid(prevGrid => {
           let newGrid = Array.copy(prevGrid)
@@ -100,14 +165,42 @@ let make = () => {
       }
 
   
-      <div className="max-w-4xl mx-auto p-8 overflow-auto">
-        <h2 className="text-2xl font-bold mb-4"> {"Available Letters"->React.string} </h2>
+      <div className="max-w-4xl mx-auto p-8 pt-120 overflow-auto">
+        //<h2 className="text-2xl font-bold mb-4"> {"Available Letters"->React.string} </h2>
+        <div className="flex items-center justify-between mb-4">
+            <div>
+    <h2 className="text-2xl font-bold"> {"Available Letters"->React.string} </h2>
+    {switch hintWord {
+    | Some(word) => 
+      <p className="text-sm text-blue-600 mt-1">
+        {("Hint: " ++ word)->React.string}
+      </p>
+    | None => React.null
+    }}
+    <p className="text-sm text-blue-600 mt-1">
+        {"Please place your first letter in the middle of the board (on the blue grid cell)"->React.string}
+    </p>
+  </div>
+  <div className="flex gap-2">
+    <button 
+      onClick={_ => handleHint()->ignore}
+      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+      {"Hint"->React.string}
+    </button>
+    <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+      {"Button 2"->React.string}
+    </button>
+    <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+      {"Button 3"->React.string}
+    </button>
+  </div>
+</div>
         <div className="flex gap-3 mb-8 flex-wrap min-h-20 p-4 bg-gray-100 rounded overflow-visible">
           {letters->Array.length > 0
             ? letters
-              ->Array.map(letter =>
+              ->Array.mapWithIndex((letter, index) =>
                 <div
-                  key=letter
+                  key={letter ++ "-" ++ Int.toString(index)}
                   draggable=true
                   onDragStart={handleDragStart(letter)}
                   className="cursor-move px-4 py-2 bg-blue-300 rounded shadow-md text-xl font-bold select-none hover:bg-blue-400"
@@ -122,14 +215,17 @@ let make = () => {
     
 <h2 className="text-2xl font-bold mb-4"> {"Grid"->React.string} </h2>
     <div className="inline-block border border-gray-400">
-      <div style={ReactDOM.Style.make(~display="grid", ~gridTemplateColumns="repeat(20, 2rem)", ())}>
+      <div style={ReactDOM.Style.make(~display="grid", ~gridTemplateColumns="repeat(21, 2rem)", ())}>
         {grid
-          ->Array.mapWithIndex((item, index) =>
+          ->Array.mapWithIndex((item, index) => {
+            let centerIndex = (gridRows * gridCols) / 2
+            let isCenter = index === centerIndex
+            let bgColor = isCenter ? "bg-blue-200" : "bg-white"
             <div
               key={Int.toString(index)}
               onDrop={handleDrop(index)}
               onDragOver={handleDragOver}
-              className="w-8 h-8 border border-gray-300 flex items-center justify-center bg-white hover:bg-gray-50"
+              className={("w-8 h-8 border border-gray-300 flex items-center justify-center hover:bg-gray-50 " ++ bgColor )}
             >
               {switch item {
               | Some(letter) =>
@@ -143,7 +239,7 @@ let make = () => {
               | None => React.null
               }}
             </div>
-          )
+         } )
           ->React.array}
       </div>
     </div>
