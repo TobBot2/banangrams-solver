@@ -20,6 +20,7 @@ function App(props) {
         return Core__Array.make(651, undefined);
       });
   var setGrid = match$2[1];
+  var grid = match$2[0];
   var match$3 = React.useState(function () {
         return true;
       });
@@ -41,25 +42,39 @@ function App(props) {
             y
           ];
   };
-  var sendTile = async function (letter, x, y) {
+  var sendBoardToServer = async function (grid) {
     try {
-      var response = await fetch("http://localhost:8080/place_tile?letter=" + letter + "&x=" + x.toString() + "&y=" + y.toString());
+      var boardMap = Core__Array.reduce(Core__Array.filterMap(grid.map(function (item, index) {
+                    if (item === undefined) {
+                      return ;
+                    }
+                    var match = indexToCoord(index);
+                    var key = match[0].toString() + "," + match[1].toString();
+                    return [
+                            key,
+                            item
+                          ];
+                  }), (function (x) {
+                  return x;
+                })), {}, (function (dict, param) {
+              dict[param[0]] = param[1];
+              return dict;
+            }));
+      var json_data = JSON.stringify(boardMap);
+      var options = {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: json_data
+      };
+      var response = await fetch("http://localhost:8080/validate", options);
       await response.json();
+      console.log("Board submitted successfully");
       return ;
     }
     catch (exn){
-      console.log("Failed to send coordinate");
-      return ;
-    }
-  };
-  var sendTileRemoval = async function (x, y) {
-    try {
-      var response = await fetch("http://localhost:8080/remove_tile?x=" + x.toString() + "&y=" + y.toString());
-      await response.json();
-      return ;
-    }
-    catch (exn){
-      console.log("Failed to send tile removal");
+      console.log("Failed to submit board");
       return ;
     }
   };
@@ -110,14 +125,6 @@ function App(props) {
         setGrid(function (prevGrid) {
               var newGrid = prevGrid.slice();
               newGrid[index] = dragged;
-              var match = indexToCoord(index);
-              var y = match[1];
-              var x = match[0];
-              console.log("Coordinate:", [
-                    x,
-                    y
-                  ]);
-              sendTile(dragged, x, y);
               return newGrid;
             });
         setLetters(function (prevLetters) {
@@ -165,12 +172,15 @@ function App(props) {
                                         })
                                     }),
                                 JsxRuntime.jsx("button", {
-                                      children: "Button 2",
+                                      children: "Dump",
                                       className: "px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
                                     }),
                                 JsxRuntime.jsx("button", {
-                                      children: "Button 3",
-                                      className: "px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                      children: "Validate",
+                                      className: "px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600",
+                                      onClick: (function (param) {
+                                          sendBoardToServer(grid);
+                                        })
                                     })
                               ],
                               className: "flex gap-2"
@@ -202,7 +212,7 @@ function App(props) {
                     }),
                 JsxRuntime.jsx("div", {
                       children: JsxRuntime.jsx("div", {
-                            children: match$2[0].map(function (item, index) {
+                            children: grid.map(function (item, index) {
                                   var centerIndex = 325;
                                   var isCenter = index === centerIndex;
                                   var bgColor = isCenter ? "bg-blue-200" : "bg-white";
@@ -212,14 +222,6 @@ function App(props) {
                                                       className: "cursor-pointer w-full h-full flex items-center justify-center bg-green-400 text-sm font-bold select-none hover:bg-red-400",
                                                       title: "Click to remove",
                                                       onClick: (function (param) {
-                                                          var match = indexToCoord(index);
-                                                          var y = match[1];
-                                                          var x = match[0];
-                                                          console.log("Coordinate:", [
-                                                                x,
-                                                                y
-                                                              ]);
-                                                          sendTileRemoval(x, y);
                                                           setGrid(function (prevGrid) {
                                                                 var newGrid = prevGrid.slice();
                                                                 newGrid[index] = undefined;

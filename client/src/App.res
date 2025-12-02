@@ -6,6 +6,8 @@
 
 @val external fetch: string => promise<'response> = "fetch"
 
+@val external fetchOptions: (string, 'options) => promise<'response> = "fetch"
+
 type response
 @send external json: response => promise<JSON.t> = "json"
 
@@ -64,6 +66,49 @@ let sendTileRemoval = async (x, y) => {
   }
 }
 
+
+
+let sendBoardToServer = async grid => {
+    try {
+    let boardMap = grid
+      ->Array.mapWithIndex((item, index) => {
+        switch item {
+        | Some(letter) => {
+            let (x, y) = indexToCoord(index)
+            let key = Int.toString(x) ++ "," ++ Int.toString(y)
+            Some((key, letter))
+          }
+        | None => None
+        }
+      })
+      ->Array.filterMap(x => x)
+      ->Array.reduce(Js.Dict.empty(), (dict, (key, letter)) => {
+        Js.Dict.set(dict, key, JSON.Encode.string(letter))
+        dict
+      })
+    
+    // Convert to JSON format
+    let json_data = boardMap->JSON.Encode.object->JSON.stringify
+     
+    let options = {
+      "method": "POST",
+      "headers": {"Content-Type": "application/json"},
+      "body": json_data
+    }
+    
+    let response = await fetchOptions("http://localhost:8080/validate", options)
+    let _ = await response->json
+    Console.log("Board submitted successfully")
+    ()
+  } catch {
+  | _ => Console.log("Failed to submit board")
+  }
+}
+
+let handleValidate = () => {
+  sendBoardToServer(grid)->ignore
+}
+
     // Fetch tiles from server on mount
       React.useEffect0(() => {
         let fetchTiles = async () => {
@@ -91,7 +136,7 @@ let sendTileRemoval = async (x, y) => {
       })
 
       
-      let handleHint = async () => {
+  let handleHint = async () => {
   try {
     let response = await fetch("http://localhost:8080/hint")
     let json = await response->json
@@ -113,6 +158,8 @@ let sendTileRemoval = async (x, y) => {
 
 
 
+
+
   let handleDragStart = letter => e => {
         //e->ReactEvent.Synthetic.preventDefault
         setDragged(_ => Some(letter))
@@ -127,9 +174,7 @@ let sendTileRemoval = async (x, y) => {
             setGrid(prevGrid => {
               let newGrid = Array.copy(prevGrid)
               newGrid[index] = Some(letter)
-              let (x,y) = indexToCoord(index)
-              Console.log2("Coordinate:", (x, y))
-              sendTile(letter,x, y)->ignore
+              
               newGrid
               //at this point we would validate the board
             })
@@ -150,9 +195,9 @@ let sendTileRemoval = async (x, y) => {
       }
     
       let handleRemoveFromGrid = (index, letter) => {
-        let (x,y) = indexToCoord(index)
-        Console.log2("Coordinate:", (x, y))
-        sendTileRemoval(x, y)->ignore
+        //let (x,y) = indexToCoord(index)
+        //Console.log2("Coordinate:", (x, y))
+        //sendTileRemoval(x, y)->ignore
         // Remove from grid
         setGrid(prevGrid => {
           let newGrid = Array.copy(prevGrid)
@@ -188,10 +233,12 @@ let sendTileRemoval = async (x, y) => {
       {"Hint"->React.string}
     </button>
     <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-      {"Button 2"->React.string}
+      {"Dump"->React.string}
     </button>
-    <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-      {"Button 3"->React.string}
+    <button 
+      onClick={_ => handleValidate()->ignore}
+      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+      {"Validate"->React.string}
     </button>
   </div>
 </div>

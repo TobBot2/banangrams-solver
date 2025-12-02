@@ -7,6 +7,8 @@ open Core
  (* tile bag: make a list of potential tiles *)
 
 (*getting the letters from the file: should we move this to a utils in lib?*)
+
+(*UTILS ONCE LIB COMPILING*)
 let read_letter_list filename =
   let ic = In_channel.create filename in
   let rec read_lines acc =
@@ -83,45 +85,33 @@ let hint : Dream.route =
 
   )
 
-  let place_tile : Dream.route =
-  Dream.get "/place_tile" (fun request ->
-      let letter = Dream.query request "letter" in
-      let x = Dream.query request "x" in
-      let y = Dream.query request "y" in
-      
-      (match (letter, x, y) with
-      | (Some l, Some x_str, Some y_str) ->
-          (try
-            let x_int = int_of_string x_str in
-            let y_int = int_of_string y_str in
-            (* Do something with the placement *)
-            Printf.printf "Placed tile '%s' at (%d, %d)\n%!" l x_int y_int;
-            Dream.json ~status:`OK "\"success\""
-              ~headers:[ ("Access-Control-Allow-Origin", "*") ]
-          with _ ->
-            Dream.json ~status:`Bad_Request "\"Invalid coordinates\"")
-      | _ ->
-          Dream.json ~status:`Bad_Request "\"Missing parameters\"")
-  )
-
-let remove_tile : Dream.route =
-  Dream.get "/remove_tile" (fun request ->
-      let x = Dream.query request "x" in
-      let y = Dream.query request "y" in
-      
-      (match (x, y) with
-      | (Some x_str, Some y_str) ->
-          (try
-            let x_int = int_of_string x_str in
-            let y_int = int_of_string y_str in
-            (* Do something with the removal *)
-            Printf.printf "Removed tile at (%d, %d)\n%!" x_int y_int;
-            Dream.json ~status:`OK "\"success\""
-              ~headers:[ ("Access-Control-Allow-Origin", "*") ]
-          with _ ->
-            Dream.json ~status:`Bad_Request "\"Invalid coordinates\"")
-      | _ ->
-          Dream.json ~status:`Bad_Request "\"Missing parameters\"")
+let validate : Dream.route =
+  Dream.post "/validate" (fun request ->
+    let%lwt body = Dream.body request in
+      try
+        let json = Yojson.Basic.from_string body in
+        match json with
+        | `Assoc pairs ->
+            let board_map = List.fold pairs 
+              ~init:(Map.empty (module String))
+              ~f:(fun acc (coord_key, letter_json) ->
+                match letter_json with
+                | `String letter -> Map.add_exn acc ~key:coord_key ~data:letter
+                | _ -> acc
+              )
+            in
+            Map.iteri board_map ~f:(fun ~key ~data ->
+              Printf.printf "Coordinate %s has letter '%s'\n%!" key data
+            );
+            
+            Dream.json ~status:`OK "\"Board received successfully\""
+                ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+        | _ ->
+            Dream.json ~status:`Bad_Request "\"Expected object\""
+            ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+      with _ ->
+        Dream.json ~status:`Bad_Request "\"Invalid JSON\""
+        ~headers:[ ("Access-Control-Allow-Origin", "*") ]
   )
 
 
@@ -133,14 +123,29 @@ let remove_tile : Dream.route =
     Dream.get "/**" (Dream.static "../client/dist"); (*May only work in dev mode?*)
   ]*)
 
+(*working with a monad and mutation here: is that okay?*)
+
+
+let cors_preflight : Dream.route =
+  Dream.options "/validate" (fun _ ->
+    Dream.respond ~status:`OK
+      ~headers:[
+        ("Access-Control-Allow-Origin", "*");
+        ("Access-Control-Allow-Methods", "POST, OPTIONS");
+        ("Access-Control-Allow-Headers", "Content-Type");
+      ]
+      ""
+  )
+
 let () =
   Dream.run ~port:8080
   @@ Dream.logger
   @@ Dream.router [
+       
        get_random_tiles;
        hint;
-       place_tile;
-       remove_tile;
+       cors_preflight;
+       validate;
      ]
 
 

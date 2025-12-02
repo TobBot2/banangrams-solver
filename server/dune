@@ -1,6 +1,7 @@
 (executable
  (name server)
- (libraries dream core))
+ (libraries dream core yojson lwt)
+ (preprocess (pps lwt_ppx)))
 
 ; Copy index.html from client/dist into server’s build directory
 ;(rule
