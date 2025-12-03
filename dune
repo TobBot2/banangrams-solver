@@ -9,6 +9,7 @@
     src/lib/validation.ml
     src/lib/word.mli
     src/lib/word.ml
+    test/tests.ml
   )
   (action
     (run zip -R assignment7.zip %{deps})))

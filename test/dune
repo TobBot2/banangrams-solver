@@ -1,0 +1,10 @@
+(test
+  (name tests)
+  (modules tests)
+  (libraries
+    core
+    ounit2
+    lib
+  )
+  (preprocess (pps ppx_jane))
+  (flags (:standard -w -33)))
