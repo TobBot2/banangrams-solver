@@ -1,5 +1,6 @@
 
-(*open Core*)
+open Core
+
 (** Signature for tile values *)
 module type VALUE = sig
   type t [@@deriving sexp, compare, equal]
