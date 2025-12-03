@@ -11,6 +11,8 @@
 type response
 @send external json: response => promise<JSON.t> = "json"
 
+@val external alert: string => unit = "window.alert"
+
 @react.component
 let make = () => {
 
@@ -26,7 +28,12 @@ let make = () => {
     
       let (letters, setLetters) = React.useState(() => [])
       let (dragged, setDragged) = React.useState(() => None)
-      let (grid, setGrid) = React.useState(() => Array.make(~length=gridRows * gridCols, None))
+      //let (grid, setGrid) = React.useState(() => Array.make(~length=gridRows * gridCols, None))
+      //let (grid, setGrid) = React.useState(() => Array.make(~length=gridRows * gridCols, None:<option(string, string)>))
+      let (grid, setGrid) = React.useState(() => {
+  let emptyCell: option<(string, string)> = None
+  Array.make(~length=gridRows * gridCols, emptyCell)
+})
       let (loading, setLoading) = React.useState(() => true)
       let (hintWord, setHintWord) = React.useState(() => None)
 
@@ -42,41 +49,15 @@ let make = () => {
   (x, y)
 }
 
-let sendTile = async (letter, x, y) => {
-  try {
-    let response = await fetch(
-      "http://localhost:8080/place_tile?letter=" ++ letter ++ "&x=" ++ Int.toString(x) ++ "&y=" ++ Int.toString(y)
-    )
-    let _ = await response->json
-    ()
-  } catch {
-  | _ => Console.log("Failed to send coordinate")
-  }
-}
-
-let sendTileRemoval = async (x, y) => {
-  try {
-    let response = await fetch(
-      "http://localhost:8080/remove_tile?x=" ++ Int.toString(x) ++ "&y=" ++ Int.toString(y)
-    )
-    let _ = await response->json
-    ()
-  } catch {
-  | _ => Console.log("Failed to send tile removal")
-  }
-}
-
-
-
 let sendBoardToServer = async grid => {
-    try {
+  try {
     let boardMap = grid
       ->Array.mapWithIndex((item, index) => {
         switch item {
-        | Some(letter) => {
+        | Some((letter, _id)) => {  // Destructure and ignore the id
             let (x, y) = indexToCoord(index)
             let key = Int.toString(x) ++ "," ++ Int.toString(y)
-            Some((key, letter))
+            Some((key, letter))  // Only use the letter
           }
         | None => None
         }
@@ -97,13 +78,25 @@ let sendBoardToServer = async grid => {
     }
     
     let response = await fetchOptions("http://localhost:8080/validate", options)
-    let _ = await response->json
+    let json = await response->json
+
+     let status = response["status"]
+    if status >= 200 && status < 300 {
+      alert("✓ Board is valid!")
+    } else {
+      // Extract error message if available
+      switch json->JSON.Decode.string {
+      | Some(msg) => alert("✗ " ++ msg)
+      | None => alert("✗ Validation failed")
+      }
+    }
     Console.log("Board submitted successfully")
     ()
   } catch {
-  | _ => Console.log("Failed to submit board")
+  | _ => alert("✗ Failed to validate board")
   }
 }
+
 
 let handleValidate = () => {
   sendBoardToServer(grid)->ignore
@@ -164,9 +157,9 @@ let handleValidate = () => {
 
 
 
-  let handleDragStart = letter => e => {
+  let handleDragStart = tileWithId => e => {
         //e->ReactEvent.Synthetic.preventDefault
-        setDragged(_ => Some((letter, id)))
+        setDragged(_ => Some(tileWithId))
       }
     
   let handleDrop = index => e => {
@@ -177,7 +170,7 @@ let handleValidate = () => {
             // Add letter to grid
             setGrid(prevGrid => {
               let newGrid = Array.copy(prevGrid)
-              newGrid[index] = Some(letter)
+              newGrid[index] = Some((letter, id))
               
               newGrid
               //at this point we would validate the board
@@ -198,7 +191,7 @@ let handleValidate = () => {
         e->ReactEvent.Synthetic.preventDefault
       }
     
-      let handleRemoveFromGrid = (index, letter) => {
+      let handleRemoveFromGrid = (index, (letter, id)) => {
         //let (x,y) = indexToCoord(index)
         //Console.log2("Coordinate:", (x, y))
         //sendTileRemoval(x, y)->ignore
@@ -210,7 +203,7 @@ let handleValidate = () => {
         })
         
         // Add back to letters
-        setLetters(prevLetters => Array.concat(prevLetters, [letter]))
+        setLetters(prevLetters => Array.concat(prevLetters, [(letter, id)]))
       }
 
   
@@ -249,16 +242,17 @@ let handleValidate = () => {
         <div className="flex gap-3 mb-8 flex-wrap min-h-20 p-4 bg-gray-100 rounded overflow-visible">
           {letters->Array.length > 0
             ? letters
-              ->Array.mapWithIndex((letter, index) =>
+              ->Array.mapWithIndex((letter, index) =>{
+               let (actual_letter, id) = letter
                 <div
-                  key={letter ++ "-" ++ Int.toString(index)}
+                  key={actual_letter ++ "-" ++ Int.toString(index)}
                   draggable=true
                   onDragStart={handleDragStart(letter)}
                   className="cursor-move px-4 py-2 bg-blue-300 rounded shadow-md text-xl font-bold select-none hover:bg-blue-400"
                 >
-                  {React.string(letter)}
+                  {React.string(actual_letter)}
                 </div>
-              )
+          })
               ->React.array
             : <div className="text-gray-500"> {"No letters available"->React.string} </div>
           }
@@ -279,14 +273,15 @@ let handleValidate = () => {
               className={("w-8 h-8 border border-gray-300 flex items-center justify-center hover:bg-gray-50 " ++ bgColor )}
             >
               {switch item {
-              | Some(letter) =>
+              | Some(item) =>{
+                let (actual_letter, id) = item
                 <div
-                  onClick={_ => handleRemoveFromGrid(index, letter)}
+                  onClick={_ => handleRemoveFromGrid(index, item)}
                   className="cursor-pointer w-full h-full flex items-center justify-center bg-green-400 text-sm font-bold select-none hover:bg-red-400"
                   title="Click to remove"
                 >
-                  {React.string(letter)}
-                </div>
+                  {React.string(actual_letter)}
+                </div> }
               | None => React.null
               }}
             </div>

@@ -52,7 +52,7 @@ function App(props) {
                     var key = match[0].toString() + "," + match[1].toString();
                     return [
                             key,
-                            item
+                            item[0]
                           ];
                   }), (function (x) {
                   return x;
@@ -69,12 +69,23 @@ function App(props) {
         body: json_data
       };
       var response = await fetch("http://localhost:8080/validate", options);
-      await response.json();
+      var json = await response.json();
+      var status = response.status;
+      if (status >= 200 && status < 300) {
+        window.alert("✓ Board is valid!");
+      } else {
+        var msg = Core__JSON.Decode.string(json);
+        if (msg !== undefined) {
+          window.alert("✗ " + msg);
+        } else {
+          window.alert("✗ Validation failed");
+        }
+      }
       console.log("Board submitted successfully");
       return ;
     }
     catch (exn){
-      console.log("Failed to submit board");
+      window.alert("✗ Failed to validate board");
       return ;
     }
   };
@@ -85,8 +96,14 @@ function App(props) {
               var json = await response.json();
               var arr = Core__JSON.Decode.array(json);
               var tiles = arr !== undefined ? Core__Array.filterMap(arr, Core__JSON.Decode.string) : [];
+              var tilesWithIds = tiles.map(function (letter, idx) {
+                    return [
+                            letter,
+                            idx.toString()
+                          ];
+                  });
               setLetters(function (param) {
-                    return tiles;
+                    return tilesWithIds;
                   });
               return setLoading(function (param) {
                           return false;
@@ -121,22 +138,27 @@ function App(props) {
   var handleDrop = function (index) {
     return function (e) {
       e.preventDefault();
-      if (dragged !== undefined) {
-        setGrid(function (prevGrid) {
-              var newGrid = prevGrid.slice();
-              newGrid[index] = dragged;
-              return newGrid;
-            });
-        setLetters(function (prevLetters) {
-              return prevLetters.filter(function (l) {
-                          return l !== dragged;
-                        });
-            });
-        return setDragged(function (param) {
-                    
-                  });
+      if (dragged === undefined) {
+        return ;
       }
-      
+      var id = dragged[1];
+      var letter = dragged[0];
+      setGrid(function (prevGrid) {
+            var newGrid = prevGrid.slice();
+            newGrid[index] = [
+              letter,
+              id
+            ];
+            return newGrid;
+          });
+      setLetters(function (prevLetters) {
+            return prevLetters.filter(function (param) {
+                        return param[1] !== id;
+                      });
+          });
+      setDragged(function (param) {
+            
+          });
     };
   };
   var handleDragOver = function (e) {
@@ -190,8 +212,9 @@ function App(props) {
                     }),
                 JsxRuntime.jsx("div", {
                       children: letters.length > 0 ? letters.map(function (letter, index) {
+                              var actual_letter = letter[0];
                               return JsxRuntime.jsx("div", {
-                                          children: letter,
+                                          children: actual_letter,
                                           className: "cursor-move px-4 py-2 bg-blue-300 rounded shadow-md text-xl font-bold select-none hover:bg-blue-400",
                                           draggable: true,
                                           onDragStart: (function (e) {
@@ -199,7 +222,7 @@ function App(props) {
                                                     return letter;
                                                   });
                                             })
-                                        }, letter + "-" + index.toString());
+                                        }, actual_letter + "-" + index.toString());
                             }) : JsxRuntime.jsx("div", {
                               children: "No letters available",
                               className: "text-gray-500"
@@ -218,17 +241,22 @@ function App(props) {
                                   var bgColor = isCenter ? "bg-blue-200" : "bg-white";
                                   return JsxRuntime.jsx("div", {
                                               children: item !== undefined ? JsxRuntime.jsx("div", {
-                                                      children: item,
+                                                      children: item[0],
                                                       className: "cursor-pointer w-full h-full flex items-center justify-center bg-green-400 text-sm font-bold select-none hover:bg-red-400",
                                                       title: "Click to remove",
                                                       onClick: (function (param) {
+                                                          var id = item[1];
+                                                          var letter = item[0];
                                                           setGrid(function (prevGrid) {
                                                                 var newGrid = prevGrid.slice();
                                                                 newGrid[index] = undefined;
                                                                 return newGrid;
                                                               });
                                                           setLetters(function (prevLetters) {
-                                                                return prevLetters.concat([item]);
+                                                                return prevLetters.concat([[
+                                                                              letter,
+                                                                              id
+                                                                            ]]);
                                                               });
                                                         })
                                                     }) : null,
