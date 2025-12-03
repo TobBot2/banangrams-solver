@@ -3,8 +3,6 @@
   (deps 
     src/lib/board.mli
     src/lib/board.ml
-    src/lib/game.mli
-    src/lib/game.ml
     src/lib/tile.mli
     src/lib/tile.ml
     src/lib/validation.mli

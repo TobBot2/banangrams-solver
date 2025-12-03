@@ -1,10 +1,12 @@
-(*open Core*)
 
+(*open Core*)
 (** Signature for tile values *)
 module type VALUE = sig
   type t [@@deriving sexp, compare, equal]
   
   val to_string : t -> string 
+
+  include Comparable.S with type t := t
 end
 
 (** Position module - same for all tile types *)
@@ -30,7 +32,7 @@ module Position : sig
   (** [left (r, c)] returns [(r, c-1)] - one position left *)
   
   val to_string : t -> string
-
+  include Comparable.S with type t := t
 end
 
 (** Functor to create Tile module for any value type *)
@@ -56,3 +58,28 @@ module Make (V : VALUE) : sig
   (** String representation: "V@(row,col)" *)
 
 end
+
+module Value : sig
+  type t = char [@@deriving sexp, compare, equal]
+
+  val to_string : t -> string
+  
+  include Comparable.S with type t := t
+end
+
+type t = {
+  position : Position.t;
+  value : Value.t;
+} [@@deriving sexp, compare, equal]
+
+val create : Position.t -> Value.t -> t
+(** Create a tile with a position and value *)
+
+val position : t -> Position.t
+(** Get the position of the tile *)
+
+val value : t -> Value.t
+(** Get the value of the tile *)
+
+val to_string : t -> string
+(** String representation of tile *)

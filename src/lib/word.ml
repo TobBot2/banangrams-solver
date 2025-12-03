@@ -7,7 +7,7 @@ let create start values =
     let pos = Tile.Position.create 
       (Tile.Position.row start) 
       (Tile.Position.col start + i) in
-    Tile.create pos v)
+    { Tile.position = pos; Tile.value = v })
 
   (** Increments the position horizontally - not sure if this is the best approach?*)
 
@@ -17,8 +17,7 @@ let start word =
   | tile :: _ -> Tile.position tile
 
 let chars word =
-  List.map word ~f:(fun tile -> 
-    Tile.Value.to_char (Tile.value tile))
+  List.map word ~f:(fun tile -> Tile.value tile)
 
 let to_string word =
   chars word

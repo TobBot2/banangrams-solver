@@ -1,6 +1,3 @@
-open Core
-
-module Word : sig
 
   type t = Tile.t list [@@deriving sexp, compare, equal]
 
@@ -18,7 +15,3 @@ module Word : sig
 
   val length : t -> int
   (** Number of characters in word *)
-
-  val of_tiles : t -> int
-  (** Need to implemenet for Validation *)
-end
