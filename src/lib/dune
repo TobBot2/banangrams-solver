@@ -1,4 +1,5 @@
 (library
  (name lib)
  (libraries core)
+ (modules :standard \ solver)
  (preprocess (pps ppx_jane bisect_ppx)))

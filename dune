@@ -5,8 +5,6 @@
     src/lib/board.ml
     src/lib/game.mli
     src/lib/game.ml
-    src/lib/solver.mli
-    src/lib/solver.ml
     src/lib/tile.mli
     src/lib/tile.ml
     src/lib/validation.mli
