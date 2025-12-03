@@ -122,7 +122,11 @@ let handleValidate = () => {
             | None => []
             }
             
-            setLetters(_ => tiles)
+            let tilesWithIds = tiles->Array.mapWithIndex((letter, idx) => 
+        (letter, Int.toString(idx))
+      )
+
+            setLetters(_ => tilesWithIds)
             setLoading(_ => false)
           } catch {
           | _ => {
@@ -162,14 +166,14 @@ let handleValidate = () => {
 
   let handleDragStart = letter => e => {
         //e->ReactEvent.Synthetic.preventDefault
-        setDragged(_ => Some(letter))
+        setDragged(_ => Some((letter, id)))
       }
     
   let handleDrop = index => e => {
         e->ReactEvent.Synthetic.preventDefault
         
         switch dragged {
-        | Some(letter) => {
+        | Some((letter, id)) => {
             // Add letter to grid
             setGrid(prevGrid => {
               let newGrid = Array.copy(prevGrid)
@@ -181,7 +185,7 @@ let handleValidate = () => {
             
             // Remove letter from available letters
             setLetters(prevLetters => 
-              prevLetters->Array.filter(l => l !== letter)
+              prevLetters->Array.filter(((_, tileId)) => tileId !== id)
             )
             
             setDragged(_ => None)
