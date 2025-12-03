@@ -1,4 +1,5 @@
 open Core
+open Lib
 (*open Lib.Solver*)
 (*open Dream*)
 
@@ -29,7 +30,18 @@ let read_letter_list filename =
   read_lines []
 
 (*need to add an error for the file not found*)
-let tile_bag = read_letter_list "../banana-dist.txt"
+let tile_bag = read_letter_list "banana-dist.txt"
+
+(* Dictionary reference - loaded at startup *)
+let dictionary_ref : Lib.Validation.Dictionary.t option ref = ref None
+(* Load dictionary from file *)
+let load_dictionary filepath =
+  match Lib.Validation.Dictionary.load filepath with
+  | Ok dict -> 
+      dictionary_ref := Some dict;
+      Printf.printf "✓ Dictionary loaded from %s\n%!" filepath
+  | Error err ->
+      Printf.printf "✗ Failed to load dictionary: %s\n%!" err
 
 (*temporarily moving peek b/c lib dune is not building right now.*)
 (** [peek_random_tiles_from_bag tile_bag count] returns [count] tiles from [tile_bag] *)
@@ -85,35 +97,113 @@ let hint : Dream.route =
 
   )
 
+(** Validation helper functions *)
+
+(** Validate board structure (connectivity, duplicates) *)
+let validate_board_structure (board : Lib.Board.t) 
+    : (unit, string) result =
+  if Lib.Board.is_empty board then
+    Error "Board is empty"
+  else if not (Lib.Validation.is_connected board) then
+    Error "Board tiles must be connected"
+  else
+    Ok ()
+
+(** Validate words against dictionary *)
+let validate_words (board : Lib.Board.t) (dict : Lib.Validation.Dictionary.t) 
+    : (int, string list) result =
+  let words = Lib.Validation.extract_all_words board in
+  Printf.printf "Found %d words: " (List.length words);
+  List.iter words ~f:(fun word ->
+    Printf.printf "%s " (Word.to_string word)
+  );
+  Printf.printf "\n%!";
+  
+  match Lib.Validation.validate board dict with
+  | Ok () -> Ok (List.length words)
+  | Error invalid_words -> Error invalid_words
+
 let validate : Dream.route =
   Dream.post "/validate" (fun request ->
     let%lwt body = Dream.body request in
-      try
-        let json = Yojson.Basic.from_string body in
-        match json with
-        | `Assoc pairs ->
-            let board_map = List.fold pairs 
-              ~init:(Map.empty (module String))
-              ~f:(fun acc (coord_key, letter_json) ->
-                match letter_json with
-                | `String letter -> Map.add_exn acc ~key:coord_key ~data:letter
-                | _ -> acc
-              )
-            in
-            Map.iteri board_map ~f:(fun ~key ~data ->
-              Printf.printf "Coordinate %s has letter '%s'\n%!" key data
-            );
-            
-            Dream.json ~status:`OK "\"Board received successfully\""
+    Printf.printf "Body: %s\n%!" body;
+    try
+      match Yojson.Basic.from_string body with 
+      | `Assoc pairs ->
+          (* Parse tiles directly from JSON *)
+          Printf.printf "Parsed %d pairs\n%!" (List.length pairs);
+          let tiles =
+            List.filter_map pairs ~f:(fun (coord, json) ->
+              match json, String.split coord ~on:',' with
+              | `String letter, [col_str; row_str] when String.length letter = 1 ->
+                  (try
+                    let col = Int.of_string (String.strip row_str) in
+                    let row = Int.of_string (String.strip col_str) in
+                    Printf.printf "  -> (%d,%d) = '%s'\n%!" row col letter;
+                    Some (Tile.create (Tile.Position.create row col) (String.get letter 0))
+                  with _ -> None)
+              | _ -> None)
+          in
+          
+          (* Create board from tiles *)
+          (match Lib.Board.of_tiles tiles with
+          | Error err ->
+              Printf.printf "Board creation failed: %s\n%!" err;
+              Dream.json ~status:`Bad_Request 
+                (sprintf "\"Error: %s\"" err)
                 ~headers:[ ("Access-Control-Allow-Origin", "*") ]
-        | _ ->
-            Dream.json ~status:`Bad_Request "\"Expected object\""
-            ~headers:[ ("Access-Control-Allow-Origin", "*") ]
-      with _ ->
+          
+          | Ok board ->
+              let num_tiles = Lib.Board.size board in
+              Printf.printf "Board created with %d tiles\n%!" num_tiles;
+              
+              (* Validate board structure *)
+              (match validate_board_structure board with
+              | Error err ->
+                  Printf.printf "Board structure invalid: %s\n%!" err;
+                  Dream.json ~status:`Bad_Request 
+                    (sprintf "\"%s\"" err)
+                    ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+              
+              | Ok () ->
+                  (* After that Validate words against dictionary *)
+                  (match !dictionary_ref with
+                  | None ->
+                      Printf.printf "No dictionary - structure check only\n%!";
+                      let num_words = List.length (Lib.Validation.extract_all_words board) in
+                      Dream.json ~status:`OK 
+                        (sprintf "\"Valid structure: %d tiles, %d words\"" 
+                          num_tiles num_words)
+                        ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+                  
+                  | Some dict ->
+                      Printf.printf "Validating words...\n%!";
+                      (match validate_words board dict with
+                      | Ok num_words ->
+                          Printf.printf "✓ All words valid\n%!";
+                          Dream.json ~status:`OK 
+                            (sprintf "\"Valid! %d tiles, %d words\"" 
+                              num_tiles num_words)
+                            ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+                      
+                      | Error invalid_words ->
+                          Printf.printf "✗ Invalid words: %s\n%!" 
+                            (String.concat ~sep:", " invalid_words);
+                          Dream.json ~status:`Bad_Request 
+                            (sprintf "\"Invalid words: %s\"" 
+                              (String.concat ~sep:", " invalid_words))
+                            ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+                      )
+                  ))
+          )
+          
+      | _ ->
+          Dream.json ~status:`Bad_Request "\"Expected object\""
+          ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+    with _ ->
         Dream.json ~status:`Bad_Request "\"Invalid JSON\""
         ~headers:[ ("Access-Control-Allow-Origin", "*") ]
   )
-
 
 
 (*let () =
@@ -138,10 +228,14 @@ let cors_preflight : Dream.route =
   )
 
 let () =
+
+  load_dictionary "dictionary.txt";
+
   Dream.run ~port:8080
   @@ Dream.logger
   @@ Dream.router [
-       
+       Dream.get "/" (fun _ ->
+         Dream.html "Bananagrams server is running!");
        get_random_tiles;
        hint;
        cors_preflight;

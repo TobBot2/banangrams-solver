@@ -1,42 +1,37 @@
 open Core
 
-(* Create a Position map module *)
-module Position_map = Map.Make(struct
-  type t = Tile.Position.t [@@deriving sexp, compare]
-end)
-
 (* Board is a map from Position to Value *)
-type t = Tile.Value.t Position_map.t [@@deriving sexp, compare]
+type t = Tile.Value.t Map.M(Tile.Position).t [@@deriving sexp, compare]
 
-let empty = Position_map.empty
+let empty = Map.empty (module Tile.Position)
 
 let set tile board =
-  Position_map.set board ~key:(Tile.position tile) ~data:(Tile.value tile)
+  Map.set board ~key:(Tile.position tile) ~data:(Tile.value tile)
 
 let remove pos board =
-  Position_map.remove board pos
+  Map.remove board pos
 
 let get pos board =
-  Position_map.find board pos
+  Map.find board pos
 
 let get_tile pos board =
   Option.map (get pos board) ~f:(fun value -> Tile.create pos value)
 
 let mem pos board =
-  Position_map.mem board pos
+  Map.mem board pos
 
 let to_tiles board =
-  Position_map.fold board ~init:[] ~f:(fun ~key:pos ~data:value acc ->
+  Map.fold board ~init:[] ~f:(fun ~key:pos ~data:value acc ->
     Tile.create pos value :: acc)
 
 let positions board =
-  Position_map.keys board
+  Map.keys board
 
 let is_empty board =
-  Position_map.is_empty board
+  Map.is_empty board
 
 let size board =
-  Position_map.length board
+  Map.length board
 
 let of_tiles tiles =
   let rec go remaining board =

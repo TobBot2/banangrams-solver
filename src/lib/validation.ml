@@ -1,6 +1,12 @@
 open Core
 
-module Dictionary = struct
+module type DICTIONARY = sig
+  type t
+  val load : string -> (t, string) result
+  val contains : t -> string -> bool
+end
+
+module Dictionary : DICTIONARY = struct
   type t = String.Set.t
   
   let load filepath =
@@ -44,7 +50,7 @@ let extract_word_horizontal pos board =
     in
     let tiles = collect_tiles pos [] in
     if List.length tiles >= 2 then
-      Some (Word.of_tiles tiles)
+      Some tiles
     else
       None
 
@@ -60,7 +66,7 @@ let extract_word_vertical pos board =
     in
     let tiles = collect_tiles pos [] in
     if List.length tiles >= 2 then
-      Some (Word.of_tiles tiles)
+      Some tiles
     else
       None
 
@@ -123,3 +129,21 @@ let validate board dict =
     let invalid = find_invalid_words board dict in
     if List.is_empty invalid then Ok ()
     else Error invalid
+
+module Make (Dict : DICTIONARY) = struct
+  let find_invalid_words board dict =
+    let words = extract_all_words board in
+    List.filter_map words ~f:(fun word ->
+      let word_str = Word.to_string word in
+      if Dict.contains dict word_str then None
+      else Some word_str)
+
+  let validate board dict =
+    if Board.is_empty board then Ok ()
+    else if not (is_connected board) then
+      Error ["Board is not connected - all tiles must form a single group"]
+    else
+      let invalid = find_invalid_words board dict in
+      if List.is_empty invalid then Ok ()
+      else Error invalid
+end

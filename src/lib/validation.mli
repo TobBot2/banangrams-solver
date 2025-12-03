@@ -3,7 +3,7 @@ open Core
 (** Board validation: word extraction, connectivity, and dictionary checking *)
 
 (** Dictionary interface for word validation *)
-module Dictionary : sig
+module type DICTIONARY = sig
   type t
   (** Dictionary type for word validation *)
   
@@ -15,8 +15,9 @@ module Dictionary : sig
   (** [contains dict word] checks if [word] exists in the dictionary.
       Case-insensitive. *)
 end
-(** Loop through the board (ie a map) to find the start of the word, figuring out whether its vertial or horizontal then store a list of words for further validation steps *)
+(** Loop through the board (ie a map) to find the start of the word, figuring out whether its vertial or horizontal then store that(?) for further validation steps *)
 (** Validate that all tiles given to a player were used in the board object returned from the server*)
+module Dictionary : DICTIONARY
 
 val is_word_start_horizontal : Tile.Position.t -> Board.t -> bool
 (** [is_word_start_horizontal pos board] returns true if [pos] starts a horizontal word.
@@ -108,8 +109,4 @@ module Make (Dict : DICTIONARY) : sig
   
   val find_invalid_words : Board.t -> Dict.t -> string list
   (** Returns list of words on board not in dictionary *)
-  
-  val would_be_valid : Tile.t list -> Board.t -> Dict.t -> (unit, string list) result
-  (** Check if placing tiles would result in a valid board.
-      Useful for validating moves before applying them. *)
 end
