@@ -24,37 +24,38 @@ val is_word_start_horizontal : Tile.Position.t -> Board.t -> bool
     
     A position is a horizontal word start if:
     - A tile exists at [pos]
-    - No tile exists to the west (left)
-    - A tile exists to the east (right)
+    - No tile exists to the left
+    - A tile exists to the right
 *)
 
-val is_word_start_vertical : Tile.Position.t -> Board.t -> bool
-(** [is_word_start_vertical pos board] returns true if [pos] starts a vertical word.
+val is_word_start_vertical_down : Tile.Position.t -> Board.t -> bool
+(** [is_word_start_vertical_down pos board] returns true if [pos] starts a vertical word going downward.
     
-    A position is a vertical word start if:
+    A position is a vertical word start (downward) if:
     - A tile exists at [pos]
-    - No tile exists to the north (above)
-    - A tile exists to the south (below)
+    - No tile exists to the above
+    - A tile exists to the below
 *)
 
 val extract_word_horizontal : Tile.Position.t -> Board.t -> Word.t option
 (** [extract_word_horizontal pos board] extracts the horizontal word starting at [pos].
     
     Returns [None] if [pos] is not a horizontal word start.
-    Follows tiles to the east until no more tiles exist.
+    Follows tiles to the right until no more tiles exist.
 *)
 
-val extract_word_vertical : Tile.Position.t -> Board.t -> Word.t option
-(** [extract_word_vertical pos board] extracts the vertical word starting at [pos].
+val extract_word_vertical_down : Tile.Position.t -> Board.t -> Word.t option
+(** [extract_word_vertical_down pos board] extracts the vertical word going downward starting at [pos].
     
-    Returns [None] if [pos] is not a vertical word start.
-    Follows tiles to the south until no more tiles exist.
+    Returns [None] if [pos] is not a vertical word start going down.
+    Follows tiles to the down until no more tiles exist.
 *)
+
 
 val extract_all_words : Board.t -> Word.t list
 (** [extract_all_words board] finds all words on the board.
     
-    - Checks every position for horizontal and vertical word starts
+    - Checks every position for horizontal and vertical word starts 
     - Only returns words of length >= 2
     - Single isolated letters are not considered words
 *)

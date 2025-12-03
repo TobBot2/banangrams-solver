@@ -33,7 +33,8 @@ let is_word_start_horizontal pos board =
   Board.mem (Tile.Position.right pos) board &&
   not (Board.mem (Tile.Position.left pos) board)
 
-let is_word_start_vertical pos board =
+(* Vertical word start going DOWN: has tile below, nothing above *)
+let is_word_start_vertical_down pos board =
   Board.mem pos board &&
   Board.mem (Tile.Position.down pos) board &&
   not (Board.mem (Tile.Position.up pos) board)
@@ -54,8 +55,9 @@ let extract_word_horizontal pos board =
     else
       None
 
-let extract_word_vertical pos board =
-  if not (is_word_start_vertical pos board) then None
+(* Extract vertical word going DOWN *)
+let extract_word_vertical_down pos board =
+  if not (is_word_start_vertical_down pos board) then None
   else
     let rec collect_tiles current_pos acc =
       match Board.get_tile current_pos board with
@@ -76,8 +78,8 @@ let extract_all_words board =
     let positions = Board.positions board in
     let extract_from_position pos =
       let horizontal = extract_word_horizontal pos board in
-      let vertical = extract_word_vertical pos board in
-      List.filter_opt [horizontal; vertical]
+      let vertical_down = extract_word_vertical_down pos board in
+      List.filter_opt [horizontal; vertical_down]
     in
     List.concat_map positions ~f:extract_from_position
 

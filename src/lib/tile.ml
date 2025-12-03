@@ -15,10 +15,10 @@ module Position = struct
   let row (r, _) = r
   let col (_, c) = c
   
-  let up (row, col) = (row - 1, col)
-  let down (row, col) = (row + 1, col)
-  let right (row, col) = (row, col + 1)
-  let left (row, col) = (row, col - 1)
+  let left (row, col) = (row - 1, col)
+  let right (row, col) = (row + 1, col)
+  let up (row, col) = (row, col + 1)
+  let down (row, col) = (row, col - 1)
   
   let to_string (row, col) = sprintf "(%d,%d)" row col
 
