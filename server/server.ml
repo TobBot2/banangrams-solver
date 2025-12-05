@@ -1,5 +1,6 @@
 open Core
 open Lib
+open Bananagram
 (*open Lib.Solver*)
 (*open Dream*)
 
@@ -31,10 +32,10 @@ let read_letter_list filename : char list =
   read_lines []
 
 (* Dictionary reference - loaded at startup *)
-let dictionary_ref : Lib.Validation.Dictionary.t option ref = ref None
+let dictionary_ref : Validation.Dictionary.t option ref = ref None
 (* Load dictionary from file *)
 let load_dictionary filepath =
-  match Lib.Validation.Dictionary.load filepath with
+  match Validation.Dictionary.load filepath with
   | Ok dict -> 
       dictionary_ref := Some dict;
       Printf.printf "✓ Dictionary loaded from %s\n%!" filepath
@@ -127,7 +128,7 @@ let validate_board_structure (board : Banana_gram.Board.t)
     : (unit, string) result =
   if Banana_gram.Board.is_empty board then
     Error "Board is empty"
-  else if not (Lib.Validation.is_connected board) then
+  else if not (Validation.is_connected board) then
     Error "Board tiles must be connected"
   else
     Ok ()
@@ -135,14 +136,14 @@ let validate_board_structure (board : Banana_gram.Board.t)
 (** Validate words against dictionary *)
 let validate_words (board : Banana_gram.Board.t) (dict : Validation.Dictionary.t) 
     : (int, string list) result =
-  let words = Lib.Validation.extract_all_words board in
+  let words = Validation.extract_all_words board in
   Printf.printf "Found %d words: " (List.length words);
   List.iter words ~f:(fun word ->
     Printf.printf "%s " (Banana_gram.Word.to_string word)
   );
   Printf.printf "\n%!";
   
-  match Lib.Validation.validate board dict with
+  match Validation.validate board dict with
   | Ok () -> Ok (List.length words)
   | Error invalid_words -> Error invalid_words
 
@@ -193,7 +194,7 @@ let validate : Dream.route =
                   (match !dictionary_ref with
                   | None ->
                       Printf.printf "No dictionary - structure check only\n%!";
-                      let num_words = List.length (Lib.Validation.extract_all_words board) in
+                      let num_words = List.length (Validation.extract_all_words board) in
                       Dream.json ~status:`OK 
                         (sprintf "\"Valid structure: %d tiles, %d words\"" 
                           num_tiles num_words)
