@@ -1,0 +1,5 @@
+(library
+ (name bananagram)
+ (libraries lib core)
+ (modules :standard \ solver)
+ (preprocess (pps ppx_jane bisect_ppx)))
