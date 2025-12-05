@@ -10,7 +10,7 @@ open Lib
 (*getting the letters from the file: should we move this to a utils in lib?*)
 
 (*UTILS ONCE LIB COMPILING*)
-let read_letter_list filename =
+let read_letter_list filename : char list =
   let ic = In_channel.create filename in
   let rec read_lines acc =
     match In_channel.input_line ic with
@@ -25,12 +25,10 @@ let read_letter_list filename =
         | _ -> read_lines acc)
     | None ->
         In_channel.close ic;
+        Printf.printf "Returning %d tiles in dict\n%!" (List.length acc);
         List.rev acc
   in
   read_lines []
-
-(*need to add an error for the file not found*)
-let tile_bag = read_letter_list "banana-dist.txt"
 
 (* Dictionary reference - loaded at startup *)
 let dictionary_ref : Lib.Validation.Dictionary.t option ref = ref None
@@ -43,16 +41,27 @@ let load_dictionary filepath =
   | Error err ->
       Printf.printf "✗ Failed to load dictionary: %s\n%!" err
 
+
+(*END UTILS*)
+
+(*need to add an error for the file not found*)
+let initial_tile_bag : char list = read_letter_list "banana-dist.txt"
+let tile_bag_ref = ref initial_tile_bag
+let tile_bag_mutex = Lwt_mutex.create ()
+
 (*temporarily moving peek b/c lib dune is not building right now.*)
 (** [peek_random_tiles_from_bag tile_bag count] returns [count] tiles from [tile_bag] *)
 let peek_random_tiles_from_bag tile_bag count =
-  (* generate random indices to pull from *)
-  let rand_indices = List.init count ~f:(fun _ -> Random.int (List.length tile_bag)) in
-  (* loop through tiles, accumulating if index matches a randomly generated one *)
-  List.foldi tile_bag ~init:[] ~f:(fun i acc tile ->
-    if List.exists rand_indices ~f:(fun idx -> idx = i) then tile :: acc
-    else acc
-  )
+  let bag_size = List.length tile_bag in
+  let actual_count = Int.min count bag_size in
+  
+  if actual_count = 0 then []
+  else
+    let shuffled = List.permute ~random_state:(Random.State.make_self_init ()) tile_bag in
+    (*let result = List.take shuffled actual_count in*)
+    let result = List.sub shuffled ~pos:0 ~len:actual_count in
+    Printf.printf "Returning %d tiles\n%!" (List.length result);
+    result
 
 let get_random_tiles : Dream.route =
   Dream.get "/get_random_tiles" (fun request ->
@@ -63,7 +72,21 @@ let get_random_tiles : Dream.route =
       in
       
       (*let tiles = Lib.Solver.peek_random_tiles_from_bag tile_bag count in*)
-      let tiles = peek_random_tiles_from_bag tile_bag count in
+      (*let tiles = peek_random_tiles_from_bag tile_bag count in
+      let tile_bag = List.filter tile_bag ~f:(fun tile -> 
+        not (List.mem tiles tile ~equal:Char.equal)
+      ) in*)
+      (* Lock the mutex to prevent race conditions when multiple players request tiles *)
+      let%lwt tiles = Lwt_mutex.with_lock tile_bag_mutex (fun () ->
+        let tiles = peek_random_tiles_from_bag !tile_bag_ref count in
+        
+        (* Remove selected tiles from the shared bag *)
+        tile_bag_ref := List.filter !tile_bag_ref ~f:(fun tile -> 
+          not (List.mem tiles tile ~equal:Char.equal)
+        );
+        
+        Lwt.return tiles
+      ) in
       let tiles_json = 
         tiles 
         |> List.map ~f:(fun c -> `String (String.make 1 c))
@@ -100,9 +123,9 @@ let hint : Dream.route =
 (** Validation helper functions *)
 
 (** Validate board structure (connectivity, duplicates) *)
-let validate_board_structure (board : Lib.Board.t) 
+let validate_board_structure (board : Banana_gram.Board.t) 
     : (unit, string) result =
-  if Lib.Board.is_empty board then
+  if Banana_gram.Board.is_empty board then
     Error "Board is empty"
   else if not (Lib.Validation.is_connected board) then
     Error "Board tiles must be connected"
@@ -110,12 +133,12 @@ let validate_board_structure (board : Lib.Board.t)
     Ok ()
 
 (** Validate words against dictionary *)
-let validate_words (board : Lib.Board.t) (dict : Lib.Validation.Dictionary.t) 
+let validate_words (board : Banana_gram.Board.t) (dict : Validation.Dictionary.t) 
     : (int, string list) result =
   let words = Lib.Validation.extract_all_words board in
   Printf.printf "Found %d words: " (List.length words);
   List.iter words ~f:(fun word ->
-    Printf.printf "%s " (Word.to_string word)
+    Printf.printf "%s " (Banana_gram.Word.to_string word)
   );
   Printf.printf "\n%!";
   
@@ -140,13 +163,13 @@ let validate : Dream.route =
                     let col = Int.of_string (String.strip row_str) in
                     let row = Int.of_string (String.strip col_str) in
                     Printf.printf "  -> (%d,%d) = '%s'\n%!" row col letter;
-                    Some (Tile.create (Tile.Position.create row col) (String.get letter 0))
+                    Some (Banana_gram.Tile.create (Tile.Position.create row col) (String.get letter 0))
                   with _ -> None)
               | _ -> None)
           in
           
           (* Create board from tiles *)
-          (match Lib.Board.of_tiles tiles with
+          (match Banana_gram.Board.of_tiles tiles with
           | Error err ->
               Printf.printf "Board creation failed: %s\n%!" err;
               Dream.json ~status:`Bad_Request 
@@ -154,7 +177,7 @@ let validate : Dream.route =
                 ~headers:[ ("Access-Control-Allow-Origin", "*") ]
           
           | Ok board ->
-              let num_tiles = Lib.Board.size board in
+              let num_tiles = Banana_gram.Board.size board in
               Printf.printf "Board created with %d tiles\n%!" num_tiles;
               
               (* Validate board structure *)

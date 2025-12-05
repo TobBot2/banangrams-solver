@@ -1,9 +1,3 @@
-//@module("./assets/rescript-logo.svg")
-//external rescript: string = "default"
-
-//@module("./assets/vite.svg")
-//external vite: string = "default"
-
 @val external fetch: string => promise<'response> = "fetch"
 
 @val external fetchOptions: (string, 'options) => promise<'response> = "fetch"
@@ -15,12 +9,6 @@ type response
 
 @react.component
 let make = () => {
-
-  //let initialLetters = [
-  //      "A","B","C","D","E","F","G",
-  //      "H","I","J","K","L","M","N",
-  //      "O","P","Q","R","S","T","U"
-  //    ]
   
   // Grid dimensions
       let gridRows = 31
@@ -132,7 +120,35 @@ let handleValidate = () => {
         None
       })
 
+
+let fetchMoreTiles = async () => {
+  try {
+    let response = await fetch("http://localhost:8080/get_random_tiles?count=3") // or whatever count
+    let json = await response->json
+    
+    let tiles = switch json->JSON.Decode.array {
+    | Some(arr) => arr->Array.filterMap(JSON.Decode.string)
+    | None => []
+    }
+    
+    // Add new tiles to existing ones
+    setLetters(prev => {
+      let maxId = prev->Array.reduce(0, (max, (_, id)) => {
+        let idNum = Int.fromString(id)->Option.getOr(0)
+        max > idNum ? max : idNum
+      })
       
+      let newTiles = tiles->Array.mapWithIndex((letter, idx) => 
+        (letter, Int.toString(maxId + idx + 1))
+      )
+      
+      Array.concat(prev, newTiles)
+    })
+  } catch {
+  | _ => Console.log("Failed to fetch more tiles")
+  }
+}
+    
   let handleHint = async () => {
   try {
     let response = await fetch("http://localhost:8080/hint")
@@ -229,7 +245,9 @@ let handleValidate = () => {
       className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
       {"Hint"->React.string}
     </button>
-    <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+    <button 
+      onClick={_ => fetchMoreTiles()->ignore}
+      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
       {"Dump"->React.string}
     </button>
     <button 
@@ -296,162 +314,3 @@ let handleValidate = () => {
       </div>
 
 }
-
-/*open Belt
-
-@react.component
-let make = () => {
-
-  // ----------------------------
-  // Top letters (21 tiles)
-  // ----------------------------
-  let initialLetters = [
-    "A","B","C","D","E","F","G",
-    "H","I","J","K","L","M","N",
-    "O","P","Q","R","S","T","U"
-  ]
-
-  let (letters, _setLetters) = React.useState(() => initialLetters)
-
-  // ----------------------------
-  // Grid dimensions
-  // ----------------------------
-  let rows = 10
-  let cols = 10
-
-  // ----------------------------
-  // Grid state: array<array<option<string>>>
-  // ----------------------------
-  let (grid, setGrid) =
-    React.useState(() =>
-      Array.make(rows, Array.make(cols, None))
-    )
-
-  // ----------------------------
-  // Dragged letter state
-  // ----------------------------
-  let (dragged, setDragged) = React.useState(() => None)
-
-  // ----------------------------
-  // Drag event handlers (Synthetic.t only)
-  // ----------------------------
-  
-  
-  let handleDragStart = (letter: string) => (e: ReactEvent.Synthetic.t) => {
-    e->ReactEvent.Synthetic.preventDefault
-    setDragged(_ => Some(letter))
-  }
-
-  let handleDragOver = (e: ReactEvent.Synthetic.t) =>
-    e->ReactEvent.Synthetic.preventDefault
-
-  let handleDrop = (r: int, c: int, e: ReactEvent.Synthetic.t) => {
-    e->ReactEvent.Synthetic.preventDefault
-    switch dragged {
-    | None => ()
-    | Some(letter) =>
-        setGrid(grid =>
-          grid
-          ->Belt.Array.mapWithIndex((rowIdx, row) =>
-            row
-            ->Belt.Array.mapWithIndex((colIdx, cell) =>
-              if rowIdx == r && colIdx == c {
-                Some(letter)
-              } else {
-                cell
-              }
-            )
-          )
-        )
-        setDragged(_ => None)
-    }
-  } 
-
-  // ----------------------------
-  // Render
-  // ----------------------------
-  <div className="p-8">
-
-    /* Top draggable letters */
-    <div className="flex gap-3 mb-8 flex-wrap">
-      {letters
-      ->Array.map(letter =>
-        <div
-          key=letter
-          draggable=true
-          onDragStart={e => {
-                        e->ReactEvent.Synthetic.preventDefault
-                        setDragged(_ => Some(letter))
-                      }}
-          /*onDragStart={handleDragStart(letter)}*/
-          className="cursor-move px-4 py-2 bg-blue-300 rounded shadow-md text-xl font-bold select-none"
-        >
-          {React.string(letter)}
-        </div>
-      )
-      ->React.array}
-    </div>
-
-    /* Grid */
-    <div
-          className="grid gap-1"
-                    
-        >
-        
-      {grid
-      ->Belt.Array.mapWithIndex((rowIdx, row) =>
-        row
-        ->Belt.Array.mapWithIndex((colIdx, cell) =>
-          <div
-                      key={`${Belt.Int.toString(rowIdx)}-${Belt.Int.toString(colIdx)}`}
-                      onDragOver={e => e->ReactEvent.Synthetic.preventDefault}
-                      onDrop={e => {
-                        e->ReactEvent.Synthetic.preventDefault
-                    
-                        switch dragged {
-                        | None => ()
-                        | Some(letter) =>
-                            setGrid(grid =>
-                              grid
-                              ->Belt.Array.mapWithIndex((r, row) =>
-                                row
-                                ->Belt.Array.mapWithIndex((c, cell) =>
-                                  if r == rowIdx && c == colIdx {
-                                    Some(letter)*/
-                                 /*  } else {
-                                    cell
-                                  }
-                                )
-                              )
-                            )
-                            setDragged(_ => None)
-                        }
-                      }}
-                      className="w-10 h-10 border border-gray-400 bg-white flex items-center justify-center"
-                    >
-                      {switch Belt.Array.get(grid, rowIdx) {
-                      | None => React.null
-                      | Some(row) =>
-                          switch Belt.Array.get(row, colIdx) {
-                          | None => React.null
-                          | Some(letterOpt) =>
-                              switch letterOpt {
-                              | None => React.null
-                              | Some(letter) => React.string(letter) // ✅ letter is string
-                              }
-                          }
-                      }
-                      }
-                    </div>
-        )
-      )
-      /*->Belt.Array.flatten*/
-      ->Belt.Array.concatMany
-      ->React.array}
-    </div>
-  </div>
-}
-
-let _ = make*/
-
-
