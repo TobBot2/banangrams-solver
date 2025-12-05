@@ -7,6 +7,7 @@ type response
 
 @val external alert: string => unit = "window.alert"
 
+
 @react.component
 let make = () => {
   
@@ -91,7 +92,8 @@ let handleValidate = () => {
 }
 
     // Fetch tiles from server on mount
-      React.useEffect0(() => {
+  
+  React.useEffect0(() => {
         let fetchTiles = async () => {
           try {
             let response = await fetch("http://localhost:8080/get_random_tiles?count=21")
@@ -119,6 +121,55 @@ let handleValidate = () => {
         fetchTiles()->ignore
         None
       })
+
+
+// Fetch tiles from server on first visit only
+/*React.useEffect0(() => {
+  let storage = Webapi.Dom.Window.localStorage(Webapi.Dom.window)
+  let stored = storage->Webapi.Dom.Storage.getItem("letters")
+
+  switch stored {
+  | Some(jsonStr) =>
+      // Parse stored tiles and use them
+      let savedTiles = jsonStr->JSON.parseAny->Belt.Option.flatMap(json =>
+        JSON.Decode.array(json)->Belt.Option.map(arr =>
+          arr->Array.filterMap(JSON.Decode.string)->Array.mapWithIndex((letter, idx) => (letter, Int.toString(idx)))
+        )
+      )->Belt.Option.getWithDefault([])
+
+      setLetters(_ => savedTiles)
+      setLoading(_ => false)
+
+  | None =>
+      // No saved letters → fetch from server once
+      let fetchTiles = async () => {
+        try {
+          let response = await fetch("http://localhost:8080/get_random_tiles?count=21")
+          let json = await response->json
+
+          let tiles = switch json->JSON.Decode.array {
+          | Some(arr) => arr->Array.filterMap(JSON.Decode.string)
+          | None => []
+          }
+
+          let tilesWithIds =
+            tiles->Array.mapWithIndex((letter, idx) => (letter, Int.toString(idx)))
+
+          // Save to localStorage so refresh won't fetch again
+          Web.Storage.localStorage->Web.Storage.setItem("letters", JSON.stringify(tiles))
+
+          setLetters(_ => tilesWithIds)
+        } catch {
+        | _ =>
+            Console.log("Failed to fetch tiles")
+        }
+        setLoading(_ => false)
+      }
+      fetchTiles()->ignore
+  }
+
+  None
+})*/
 
 
 let fetchMoreTiles = async () => {
@@ -177,6 +228,17 @@ let fetchMoreTiles = async () => {
         //e->ReactEvent.Synthetic.preventDefault
         setDragged(_ => Some(tileWithId))
       }
+
+  let handleRemoveFromGrid = (index, (letter, id)) => {
+        setGrid(prevGrid => {
+          let newGrid = Array.copy(prevGrid)
+          newGrid[index] = None
+          newGrid
+        })
+        
+        // Add back to letters
+        setLetters(prevLetters => Array.concat(prevLetters, [(letter, id)]))
+      }
     
   let handleDrop = index => e => {
         e->ReactEvent.Synthetic.preventDefault
@@ -186,10 +248,14 @@ let fetchMoreTiles = async () => {
             // Add letter to grid
             setGrid(prevGrid => {
               let newGrid = Array.copy(prevGrid)
+              switch newGrid[index] {
+              | Some(Some((letter_old, id_old))) => 
+                  setLetters(prevLetters => Array.concat(prevLetters, [(letter_old, id_old)]))
+              | Some(None) => ()
+              | None => ()
+              }
               newGrid[index] = Some((letter, id))
-              
               newGrid
-              //at this point we would validate the board
             })
             
             // Remove letter from available letters
@@ -207,20 +273,7 @@ let fetchMoreTiles = async () => {
         e->ReactEvent.Synthetic.preventDefault
       }
     
-      let handleRemoveFromGrid = (index, (letter, id)) => {
-        //let (x,y) = indexToCoord(index)
-        //Console.log2("Coordinate:", (x, y))
-        //sendTileRemoval(x, y)->ignore
-        // Remove from grid
-        setGrid(prevGrid => {
-          let newGrid = Array.copy(prevGrid)
-          newGrid[index] = None
-          newGrid
-        })
-        
-        // Add back to letters
-        setLetters(prevLetters => Array.concat(prevLetters, [(letter, id)]))
-      }
+      
 
   
       <div className="max-w-4xl mx-auto p-8 pt-120 overflow-auto">

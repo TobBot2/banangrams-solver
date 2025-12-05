@@ -3,6 +3,7 @@
 import * as React from "react";
 import * as Core__Int from "@rescript/core/src/Core__Int.res.mjs";
 import * as Core__JSON from "@rescript/core/src/Core__JSON.res.mjs";
+import * as Caml_option from "rescript/lib/es6/caml_option.js";
 import * as Core__Array from "@rescript/core/src/Core__Array.res.mjs";
 import * as Core__Option from "@rescript/core/src/Core__Option.res.mjs";
 import * as JsxRuntime from "react/jsx-runtime";
@@ -176,6 +177,21 @@ function App(props) {
       var letter = dragged[0];
       setGrid(function (prevGrid) {
             var newGrid = prevGrid.slice();
+            var match = newGrid[index];
+            if (match !== undefined) {
+              var match$1 = Caml_option.valFromOption(match);
+              if (match$1 !== undefined) {
+                var id_old = match$1[1];
+                var letter_old = match$1[0];
+                setLetters(function (prevLetters) {
+                      return prevLetters.concat([[
+                                    letter_old,
+                                    id_old
+                                  ]]);
+                    });
+              }
+              
+            }
             newGrid[index] = [
               letter,
               id
