@@ -21,6 +21,9 @@
 # ocamlbuild and Dune default working directory
 _build/
 
+# bisect coverage report 
+_coverage/
+
 # ocamlbuild targets
 *.byte
 *.native

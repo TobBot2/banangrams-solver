@@ -1,5 +1,6 @@
 open Core
 open Lib
+open Bananagram
 (*open Lib.Solver*)
 (*open Dream*)
 
@@ -33,15 +34,15 @@ let read_letter_list filename =
 let tile_bag = read_letter_list "banana-dist.txt"
 
 (* Dictionary reference - loaded at startup *)
-let dictionary_ref : Lib.Validation.Dictionary.t option ref = ref None
+let dictionary_ref : Validation.Dictionary.t option ref = ref None
 (* Load dictionary from file *)
 let load_dictionary filepath =
-  match Lib.Validation.Dictionary.load filepath with
+  match Validation.Dictionary.load filepath with
   | Ok dict -> 
       dictionary_ref := Some dict;
-      Printf.printf "✓ Dictionary loaded from %s\n%!" filepath
+      Printf.printf "Dictionary loaded from %s\n%!" filepath
   | Error err ->
-      Printf.printf "✗ Failed to load dictionary: %s\n%!" err
+      Printf.printf "Failed to load dictionary: %s\n%!" err
 
 (*temporarily moving peek b/c lib dune is not building right now.*)
 (** [peek_random_tiles_from_bag tile_bag count] returns [count] tiles from [tile_bag] *)
@@ -100,26 +101,26 @@ let hint : Dream.route =
 (** Validation helper functions *)
 
 (** Validate board structure (connectivity, duplicates) *)
-let validate_board_structure (board : Lib.Board.t) 
+let validate_board_structure (board : Board.t) 
     : (unit, string) result =
   if Lib.Board.is_empty board then
     Error "Board is empty"
-  else if not (Lib.Validation.is_connected board) then
+  else if not (Validation.is_connected board) then
     Error "Board tiles must be connected"
   else
     Ok ()
 
 (** Validate words against dictionary *)
-let validate_words (board : Lib.Board.t) (dict : Lib.Validation.Dictionary.t) 
+let validate_words (board : Lib.Board.t) (dict : Validation.Dictionary.t) 
     : (int, string list) result =
-  let words = Lib.Validation.extract_all_words board in
+  let words = Validation.extract_all_words board in
   Printf.printf "Found %d words: " (List.length words);
   List.iter words ~f:(fun word ->
     Printf.printf "%s " (Word.to_string word)
   );
   Printf.printf "\n%!";
   
-  match Lib.Validation.validate board dict with
+  match Validation.validate board dict with
   | Ok () -> Ok (List.length words)
   | Error invalid_words -> Error invalid_words
 
@@ -154,7 +155,7 @@ let validate : Dream.route =
                 ~headers:[ ("Access-Control-Allow-Origin", "*") ]
           
           | Ok board ->
-              let num_tiles = Lib.Board.size board in
+              let num_tiles = Banana_gram.size board in
               Printf.printf "Board created with %d tiles\n%!" num_tiles;
               
               (* Validate board structure *)
@@ -170,7 +171,7 @@ let validate : Dream.route =
                   (match !dictionary_ref with
                   | None ->
                       Printf.printf "No dictionary - structure check only\n%!";
-                      let num_words = List.length (Lib.Validation.extract_all_words board) in
+                      let num_words = List.length (Validation.extract_all_words board) in
                       Dream.json ~status:`OK 
                         (sprintf "\"Valid structure: %d tiles, %d words\"" 
                           num_tiles num_words)
