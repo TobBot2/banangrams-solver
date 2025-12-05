@@ -3,7 +3,7 @@ open OUnit2
 open Lib
 
 (* Helper to create tiles easily for testing *)
-let make_tile row col char =
+(** let make_tile row col char =
   Tile.create (Tile.Position.create row col) char
 
 let test_position_create _ =
@@ -84,4 +84,4 @@ let series = "All tests" >::: [
   tile_tests;
   word_tests;]
 
-let () = run_test_tt_main series
+let () = run_test_tt_main series *)

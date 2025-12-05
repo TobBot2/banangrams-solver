@@ -101,9 +101,9 @@ let hint : Dream.route =
 (** Validation helper functions *)
 
 (** Validate board structure (connectivity, duplicates) *)
-let validate_board_structure (board : Board.t) 
+let validate_board_structure (board : Banana_gram.Board.t) 
     : (unit, string) result =
-  if Lib.Board.is_empty board then
+  if Banana_gram.Board.is_empty board then
     Error "Board is empty"
   else if not (Validation.is_connected board) then
     Error "Board tiles must be connected"
@@ -111,12 +111,12 @@ let validate_board_structure (board : Board.t)
     Ok ()
 
 (** Validate words against dictionary *)
-let validate_words (board : Lib.Board.t) (dict : Validation.Dictionary.t) 
+let validate_words (board : Banana_gram.Board.t) (dict : Validation.Dictionary.t) 
     : (int, string list) result =
   let words = Validation.extract_all_words board in
   Printf.printf "Found %d words: " (List.length words);
   List.iter words ~f:(fun word ->
-    Printf.printf "%s " (Word.to_string word)
+    Printf.printf "%s " (Banana_gram.Word.to_string word)
   );
   Printf.printf "\n%!";
   
@@ -141,13 +141,13 @@ let validate : Dream.route =
                     let col = Int.of_string (String.strip row_str) in
                     let row = Int.of_string (String.strip col_str) in
                     Printf.printf "  -> (%d,%d) = '%s'\n%!" row col letter;
-                    Some (Tile.create (Tile.Position.create row col) (String.get letter 0))
+                    Some (Banana_gram.Tile.create (Tile.Position.create row col) (String.get letter 0))
                   with _ -> None)
               | _ -> None)
           in
           
           (* Create board from tiles *)
-          (match Lib.Board.of_tiles tiles with
+          (match Banana_gram.Board.of_tiles tiles with
           | Error err ->
               Printf.printf "Board creation failed: %s\n%!" err;
               Dream.json ~status:`Bad_Request 
@@ -155,7 +155,7 @@ let validate : Dream.route =
                 ~headers:[ ("Access-Control-Allow-Origin", "*") ]
           
           | Ok board ->
-              let num_tiles = Banana_gram.size board in
+              let num_tiles = Banana_gram.Board.size board in
               Printf.printf "Board created with %d tiles\n%!" num_tiles;
               
               (* Validate board structure *)
