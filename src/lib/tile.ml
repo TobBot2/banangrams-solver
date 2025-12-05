@@ -1,14 +1,21 @@
 open Core
 
+(** Signature for tile values *)
 module type VALUE = sig
   type t [@@deriving sexp, compare, equal]
-  val to_string : t -> string
+  
+  val to_string : t -> string 
+
   include Comparable.S with type t := t
 end
 
-(** module Char_tile = Tile.Make(Char_value) **)
+(** Position module *)
 module Position = struct
-  type t = int * int [@@deriving sexp, compare, equal]
+  module T = struct
+    type t = int * int [@@deriving sexp, compare, equal]
+  end
+  include T
+  include Comparable.Make(T)
   
   let create row col = (row, col)
   
@@ -20,51 +27,30 @@ module Position = struct
   let up (row, col) = (row, col + 1)
   let down (row, col) = (row, col - 1)
   
-  let to_string (row, col) = sprintf "(%d,%d)" row col
-
-  include Comparable.Make(struct
-    type nonrec t = t [@@deriving sexp, compare]
-  end)
-  
+  let to_string (r, c) = Printf.sprintf "(%d,%d)" r c
 end
 
+(** Functor to create Tile module for any value type *)
 module Make (V : VALUE) = struct
   module Value = V
   
-  type t = {
-    position : Position.t;
-    value : Value.t;
-  } [@@deriving sexp, compare, equal]
+  module T = struct
+    type t = {
+      position : Position.t;
+      value : Value.t;
+    } [@@deriving sexp, compare, equal]
+  end
+  include T
+  include Comparable.Make(T)
   
   let create position value = { position; value }
   
-  let position tile = tile.position
+  let position t = t.position
   
-  let value tile = tile.value
+  let value t = t.value
   
-  let to_string tile =
-    sprintf "%s@%s" 
-      (Value.to_string tile.value)
-      (Position.to_string tile.position)
+  let to_string t = 
+    Printf.sprintf "%s@%s" 
+      (Value.to_string t.value)
+      (Position.to_string t.position)
 end
-
-(* Char instantiation *)
-module Char_value = struct
-  type t = char [@@deriving sexp, compare, equal]
-  
-  let to_string c = String.make 1 c
-  
-  include Comparable.Make(struct
-    type nonrec t = t [@@deriving sexp, compare]
-  end)
-end
-
-include Make(Char_value)
-
-let create position char_value = 
-  { position; value = char_value }
-
-
-
-
-

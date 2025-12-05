@@ -40,7 +40,7 @@ end
 module Make (V : VALUE) : sig
   module Value : VALUE with type t = V.t
   
-  (** A tile is Record with a value and position *)
+  (** A tile is a record that has a value and position *)
   type t = {
     position : Position.t;
     value : Value.t;
@@ -58,29 +58,5 @@ module Make (V : VALUE) : sig
   val to_string : t -> string
   (** String representation: "V@(row,col)" *)
 
-end
-
-module Value : sig
-  type t = char [@@deriving sexp, compare, equal]
-
-  val to_string : t -> string
-  
   include Comparable.S with type t := t
 end
-
-type t = {
-  position : Position.t;
-  value : Value.t;
-} [@@deriving sexp, compare, equal]
-
-val create : Position.t -> Value.t -> t
-(** Create a tile with a position and value *)
-
-val position : t -> Position.t
-(** Get the position of the tile *)
-
-val value : t -> Value.t
-(** Get the value of the tile *)
-
-val to_string : t -> string
-(** String representation of tile *)

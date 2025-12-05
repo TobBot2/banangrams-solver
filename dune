@@ -1,14 +1,16 @@
 (rule
   (target assignment7.zip)
-  (deps 
-    src/lib/board.mli
-    src/lib/board.ml
+  (deps
     src/lib/tile.mli
     src/lib/tile.ml
-    src/lib/validation.mli
-    src/lib/validation.ml
     src/lib/word.mli
     src/lib/word.ml
+    src/lib/board.mli
+    src/lib/board.ml
+    src/bananagram/validation.mli
+    src/bananagram/validation.ml
+    src/bananagram/banana_gram.mli
+    src/bananagram/banana_gram.ml
     test/tests.ml
   )
   (action
