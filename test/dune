@@ -5,6 +5,7 @@
     core
     ounit2
     lib
+    bananagram
   )
   (preprocess (pps ppx_jane))
   (flags (:standard -w -33)))

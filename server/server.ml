@@ -38,9 +38,9 @@ let load_dictionary filepath =
   match Validation.Dictionary.load filepath with
   | Ok dict -> 
       dictionary_ref := Some dict;
-      Printf.printf "✓ Dictionary loaded from %s\n%!" filepath
+      Printf.printf "Dictionary loaded from %s\n%!" filepath
   | Error err ->
-      Printf.printf "✗ Failed to load dictionary: %s\n%!" err
+      Printf.printf "Failed to load dictionary: %s\n%!" err
 
 
 (*END UTILS*)
@@ -204,14 +204,14 @@ let validate : Dream.route =
                       Printf.printf "Validating words...\n%!";
                       (match validate_words board dict with
                       | Ok num_words ->
-                          Printf.printf "✓ All words valid\n%!";
+                          Printf.printf "All words valid\n%!";
                           Dream.json ~status:`OK 
                             (sprintf "\"Valid! %d tiles, %d words\"" 
                               num_tiles num_words)
                             ~headers:[ ("Access-Control-Allow-Origin", "*") ]
                       
                       | Error invalid_words ->
-                          Printf.printf "✗ Invalid words: %s\n%!" 
+                          Printf.printf "Invalid words: %s\n%!" 
                             (String.concat ~sep:", " invalid_words);
                           Dream.json ~status:`Bad_Request 
                             (sprintf "\"Invalid words: %s\"" 
