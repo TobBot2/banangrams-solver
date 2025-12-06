@@ -22,7 +22,7 @@ Build system: Dune build configured and working
 
 In Progress
 
-Solver: Fully written but not yet integrated into the main codebase, also still testing
+Solver: Fully written but not yet integrated into the main codebase
 Multiplayer: Working on making it a proper two-player game, using the feedback from the inital submission. Multiplayer mode will be designed by including player state management and a /join endpoint so players can join the game
 Frontend improvements: Several known issues being addressed. On webpage reload (without reloading the server), the tiles reload but the tile_bag does not. This will be useful for multiplayer so the tile bag does not reset if one player reloads their game, but local persistence for the tile rack has to be implemented so new tiles are not returned on every reload. Also, there are still edge cases when the "Dump" button is hit multiple times.
 

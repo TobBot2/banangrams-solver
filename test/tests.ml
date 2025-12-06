@@ -221,6 +221,19 @@ let test_validate_invalid_word _ =
         (List.exists invalid ~f:(fun word -> String.equal word "XYZ"))
   | Ok () -> assert_failure "Should reject invalid word"
 
+(*Bananagram tests*)
+let test_place_word_on_board _ =
+  let board = Banana_gram.Board.empty in
+  let pos = Lib.Tile.Position.create 0 0 in
+  let word = Banana_gram.Word.create pos ['F'; 'U'; 'N'] in
+  let board' = Banana_gram.place_word_on_board word board in
+  
+  assert_equal 3 (Banana_gram.Board.size board');
+  assert_equal (Some 'F') (Banana_gram.get_letter_at pos board');
+  assert_equal (Some 'U') (Banana_gram.get_letter_at (Lib.Tile.Position.create 0 1) board');
+  assert_equal (Some 'N') (Banana_gram.get_letter_at (Lib.Tile.Position.create 0 2) board')
+
+
 
 (* Test Suite *)
 let position_tests = "Position tests" >::: [
@@ -257,7 +270,9 @@ let validation_tests = "Validation tests" >::: [
   "validate invalid" >:: test_validate_invalid_word;
 ]
 
-
+let bananagram_tests = "Bananagram tests" >::: [
+  "place word on board" >:: test_place_word_on_board;
+]
 
 let series = "All tests" >::: [
   position_tests;
@@ -265,6 +280,7 @@ let series = "All tests" >::: [
   word_tests;
   board_tests;
   validation_tests;
+  bananagram_tests;
 ]
 
 let () = run_test_tt_main series

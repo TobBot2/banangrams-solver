@@ -23,6 +23,7 @@ _build/
 
 # bisect coverage report 
 _coverage/
+!_coverage/index.html
 
 # ocamlbuild targets
 *.byte
