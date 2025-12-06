@@ -7,46 +7,72 @@ type response
 
 @val external alert: string => unit = "window.alert"
 
-
 @react.component
 let make = () => {
   
   // Grid dimensions
-      let gridRows = 31
-      let gridCols = 21
+  let gridRows = 31
+  let gridCols = 21
     
-      let (letters, setLetters) = React.useState(() => [])
-      let (dragged, setDragged) = React.useState(() => None)
-      //let (grid, setGrid) = React.useState(() => Array.make(~length=gridRows * gridCols, None))
-      //let (grid, setGrid) = React.useState(() => Array.make(~length=gridRows * gridCols, None:<option(string, string)>))
-      let (grid, setGrid) = React.useState(() => {
-  let emptyCell: option<(string, string)> = None
-  Array.make(~length=gridRows * gridCols, emptyCell)
-})
-      let (loading, setLoading) = React.useState(() => true)
-      let (hintWord, setHintWord) = React.useState(() => None)
+  let (letters, setLetters) = React.useState(() => [])
+  let (dragged, setDragged) = React.useState(() => None)
+  let (grid, setGrid) = React.useState(() => {
+    let emptyCell: option<(string, string)> = None
+    Array.make(~length=gridRows * gridCols, emptyCell)
+  })
+  let (loading, setLoading) = React.useState(() => true)
+  let (hintWord, setHintWord) = React.useState(() => None)
 
 
-    //helper function to get coordinates instead of index
-    let indexToCoord = index => {
+  //helper function to get coordinates instead of index
+let indexToCoord = index => {
   let row = index / gridCols
   let col = mod(index, gridCols)
   let centerRow = gridRows / 2
   let centerCol = gridCols / 2
   let x = col - centerCol
-  let y = centerRow - row  // Subtract to make y positive going up
+  let y = centerRow - row
   (x, y)
 }
+
+React.useEffect0(() => {
+  let fetchTiles = async () => {
+    try {
+      let response = await fetch("http://localhost:8080/get_random_tiles?count=21")
+      let json = await response->json
+
+      let tiles = switch json->JSON.Decode.array {
+      | Some(arr) => arr->Array.filterMap(JSON.Decode.string)
+      | None => []
+      }
+            
+      let tilesWithIds = tiles->Array.mapWithIndex((letter, idx) => 
+        (letter, Int.toString(idx))
+      )
+
+      setLetters(_ => tilesWithIds)
+      setLoading(_ => false)
+    } catch {
+    | _ => {
+        Console.log("Failed to fetch tiles")
+        setLoading(_ => false)
+      }
+    }
+  }
+  fetchTiles()->ignore
+  None
+})
+
 
 let sendBoardToServer = async grid => {
   try {
     let boardMap = grid
       ->Array.mapWithIndex((item, index) => {
         switch item {
-        | Some((letter, _id)) => {  // Destructure and ignore the id
+        | Some((letter, _id)) => { 
             let (x, y) = indexToCoord(index)
             let key = Int.toString(x) ++ "," ++ Int.toString(y)
-            Some((key, letter))  // Only use the letter
+            Some((key, letter)) 
           }
         | None => None
         }
@@ -56,8 +82,7 @@ let sendBoardToServer = async grid => {
         Js.Dict.set(dict, key, JSON.Encode.string(letter))
         dict
       })
-    
-    // Convert to JSON format
+
     let json_data = boardMap->JSON.Encode.object->JSON.stringify
      
     let options = {
@@ -73,7 +98,6 @@ let sendBoardToServer = async grid => {
     if status >= 200 && status < 300 {
       alert("✓ Board is valid!")
     } else {
-      // Extract error message if available
       switch json->JSON.Decode.string {
       | Some(msg) => alert("✗ " ++ msg)
       | None => alert("✗ Validation failed")
@@ -86,91 +110,9 @@ let sendBoardToServer = async grid => {
   }
 }
 
-
 let handleValidate = () => {
   sendBoardToServer(grid)->ignore
 }
-
-    // Fetch tiles from server on mount
-  
-  React.useEffect0(() => {
-        let fetchTiles = async () => {
-          try {
-            let response = await fetch("http://localhost:8080/get_random_tiles?count=21")
-            let json = await response->json
-            
-            // Parse the JSON array of strings
-            let tiles = switch json->JSON.Decode.array {
-            | Some(arr) => arr->Array.filterMap(JSON.Decode.string)
-            | None => []
-            }
-            
-            let tilesWithIds = tiles->Array.mapWithIndex((letter, idx) => 
-        (letter, Int.toString(idx))
-      )
-
-            setLetters(_ => tilesWithIds)
-            setLoading(_ => false)
-          } catch {
-          | _ => {
-              Console.log("Failed to fetch tiles")
-              setLoading(_ => false)
-            }
-          }
-        }
-        fetchTiles()->ignore
-        None
-      })
-
-
-// Fetch tiles from server on first visit only
-/*React.useEffect0(() => {
-  let storage = Webapi.Dom.Window.localStorage(Webapi.Dom.window)
-  let stored = storage->Webapi.Dom.Storage.getItem("letters")
-
-  switch stored {
-  | Some(jsonStr) =>
-      // Parse stored tiles and use them
-      let savedTiles = jsonStr->JSON.parseAny->Belt.Option.flatMap(json =>
-        JSON.Decode.array(json)->Belt.Option.map(arr =>
-          arr->Array.filterMap(JSON.Decode.string)->Array.mapWithIndex((letter, idx) => (letter, Int.toString(idx)))
-        )
-      )->Belt.Option.getWithDefault([])
-
-      setLetters(_ => savedTiles)
-      setLoading(_ => false)
-
-  | None =>
-      // No saved letters → fetch from server once
-      let fetchTiles = async () => {
-        try {
-          let response = await fetch("http://localhost:8080/get_random_tiles?count=21")
-          let json = await response->json
-
-          let tiles = switch json->JSON.Decode.array {
-          | Some(arr) => arr->Array.filterMap(JSON.Decode.string)
-          | None => []
-          }
-
-          let tilesWithIds =
-            tiles->Array.mapWithIndex((letter, idx) => (letter, Int.toString(idx)))
-
-          // Save to localStorage so refresh won't fetch again
-          Web.Storage.localStorage->Web.Storage.setItem("letters", JSON.stringify(tiles))
-
-          setLetters(_ => tilesWithIds)
-        } catch {
-        | _ =>
-            Console.log("Failed to fetch tiles")
-        }
-        setLoading(_ => false)
-      }
-      fetchTiles()->ignore
-  }
-
-  None
-})*/
-
 
 let fetchMoreTiles = async () => {
   try {
@@ -181,8 +123,7 @@ let fetchMoreTiles = async () => {
     | Some(arr) => arr->Array.filterMap(JSON.Decode.string)
     | None => []
     }
-    
-    // Add new tiles to existing ones
+
     setLetters(prev => {
       let maxId = prev->Array.reduce(0, (max, (_, id)) => {
         let idNum = Int.fromString(id)->Option.getOr(0)
@@ -205,7 +146,6 @@ let fetchMoreTiles = async () => {
     let response = await fetch("http://localhost:8080/hint")
     let json = await response->json
     
-    // Assuming the server returns a word string
     let word = switch json->JSON.Decode.string {
     | Some(w) => w
     | None => ""
@@ -220,66 +160,59 @@ let fetchMoreTiles = async () => {
   }
 }
 
-
-
-
-
-  let handleDragStart = tileWithId => e => {
-        //e->ReactEvent.Synthetic.preventDefault
+let handleDragStart = tileWithId => _ => {
         setDragged(_ => Some(tileWithId))
-      }
+}
 
-  let handleRemoveFromGrid = (index, (letter, id)) => {
+let handleRemoveFromGrid = (index, (letter, id)) => {
+    setGrid(prevGrid => {
+      let newGrid = Array.copy(prevGrid)
+      newGrid[index] = None
+      newGrid
+    })
+        
+    // Add back to letters
+    setLetters(prevLetters => Array.concat(prevLetters, [(letter, id)]))
+  }
+    
+let handleDrop = index => e => {
+    e->ReactEvent.Synthetic.preventDefault
+        
+    switch dragged {
+    | Some((letter, id)) => {
         setGrid(prevGrid => {
           let newGrid = Array.copy(prevGrid)
-          newGrid[index] = None
+          switch newGrid[index] {
+          | Some(Some((letter_old, id_old))) => 
+              setLetters(prevLetters => Array.concat(prevLetters, [(letter_old, id_old)]))
+          | Some(None) => ()
+          | None => ()
+          }
+          newGrid[index] = Some((letter, id))
           newGrid
         })
-        
-        // Add back to letters
-        setLetters(prevLetters => Array.concat(prevLetters, [(letter, id)]))
-      }
-    
-  let handleDrop = index => e => {
-        e->ReactEvent.Synthetic.preventDefault
-        
-        switch dragged {
-        | Some((letter, id)) => {
-            // Add letter to grid
-            setGrid(prevGrid => {
-              let newGrid = Array.copy(prevGrid)
-              switch newGrid[index] {
-              | Some(Some((letter_old, id_old))) => 
-                  setLetters(prevLetters => Array.concat(prevLetters, [(letter_old, id_old)]))
-              | Some(None) => ()
-              | None => ()
-              }
-              newGrid[index] = Some((letter, id))
-              newGrid
-            })
             
-            // Remove letter from available letters
-            setLetters(prevLetters => 
-              prevLetters->Array.filter(((_, tileId)) => tileId !== id)
-            )
+        setLetters(prevLetters => 
+          prevLetters->Array.filter(((_, tileId)) => tileId !== id)
+        )
             
-            setDragged(_ => None)
-          }
-        | None => ()
-        }
+        setDragged(_ => None)
       }
+    | None => ()
+    }
+  }
     
-      let handleDragOver = e => {
-        e->ReactEvent.Synthetic.preventDefault
-      }
+let handleDragOver = e => {
+  e->ReactEvent.Synthetic.preventDefault
+}
     
       
 
   
-      <div className="max-w-4xl mx-auto p-8 pt-120 overflow-auto">
+  <div className="max-w-4xl mx-auto p-8 pt-120 overflow-auto">
         //<h2 className="text-2xl font-bold mb-4"> {"Available Letters"->React.string} </h2>
-        <div className="flex items-center justify-between mb-4">
-            <div>
+     <div className="flex items-center justify-between mb-4">
+    <div>
     <h2 className="text-2xl font-bold"> {"Available Letters"->React.string} </h2>
     {switch hintWord {
     | Some(word) => 
