@@ -45,6 +45,35 @@ function App(props) {
             y
           ];
   };
+  React.useEffect((function () {
+          var fetchTiles = async function () {
+            try {
+              var response = await fetch("http://localhost:8080/get_random_tiles?count=21");
+              var json = await response.json();
+              var arr = Core__JSON.Decode.array(json);
+              var tiles = arr !== undefined ? Core__Array.filterMap(arr, Core__JSON.Decode.string) : [];
+              var tilesWithIds = tiles.map(function (letter, idx) {
+                    return [
+                            letter,
+                            idx.toString()
+                          ];
+                  });
+              setLetters(function (param) {
+                    return tilesWithIds;
+                  });
+              return setLoading(function (param) {
+                          return false;
+                        });
+            }
+            catch (exn){
+              console.log("Failed to fetch tiles");
+              return setLoading(function (param) {
+                          return false;
+                        });
+            }
+          };
+          fetchTiles();
+        }), []);
   var sendBoardToServer = async function (grid) {
     try {
       var boardMap = Core__Array.reduce(Core__Array.filterMap(grid.map(function (item, index) {
@@ -92,35 +121,6 @@ function App(props) {
       return ;
     }
   };
-  React.useEffect((function () {
-          var fetchTiles = async function () {
-            try {
-              var response = await fetch("http://localhost:8080/get_random_tiles?count=21");
-              var json = await response.json();
-              var arr = Core__JSON.Decode.array(json);
-              var tiles = arr !== undefined ? Core__Array.filterMap(arr, Core__JSON.Decode.string) : [];
-              var tilesWithIds = tiles.map(function (letter, idx) {
-                    return [
-                            letter,
-                            idx.toString()
-                          ];
-                  });
-              setLetters(function (param) {
-                    return tilesWithIds;
-                  });
-              return setLoading(function (param) {
-                          return false;
-                        });
-            }
-            catch (exn){
-              console.log("Failed to fetch tiles");
-              return setLoading(function (param) {
-                          return false;
-                        });
-            }
-          };
-          fetchTiles();
-        }), []);
   var fetchMoreTiles = async function () {
     try {
       var response = await fetch("http://localhost:8080/get_random_tiles?count=3");
@@ -267,7 +267,7 @@ function App(props) {
                                           children: actual_letter,
                                           className: "cursor-move px-4 py-2 bg-blue-300 rounded shadow-md text-xl font-bold select-none hover:bg-blue-400",
                                           draggable: true,
-                                          onDragStart: (function (e) {
+                                          onDragStart: (function (param) {
                                               setDragged(function (param) {
                                                     return letter;
                                                   });

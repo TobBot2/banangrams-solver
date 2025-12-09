@@ -22,7 +22,10 @@
 _build/
 
 # bisect coverage report 
-_coverage/
+_coverage/src
+_coverage/coverage.css
+_coverage/coverage.js
+_coverage/highlight.pack.js
 
 # ocamlbuild targets
 *.byte
@@ -37,6 +40,8 @@ setup.log
 
 # Dune generated files
 *.install
+
+*.opam
 
 # Local OPAM switch
 _opam/

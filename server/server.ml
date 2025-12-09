@@ -1,16 +1,8 @@
 open Core
 open Lib
 open Bananagram
-(*open Lib.Solver*)
-(*open Dream*)
 
-  (*when tile dragged from rack in frontend, remove from rack in backend*)
-  (*initial tiles are a random selection from the bag - peek_random_tiles_from_bag*)
- (* tile bag: make a list of potential tiles *)
-
-(*getting the letters from the file: should we move this to a utils in lib?*)
-
-(*UTILS ONCE LIB COMPILING*)
+(*WILL BE MOVED TO UTILS: haven't moved yet because want to integrate solver first*)
 let read_letter_list filename : char list =
   let ic = In_channel.create filename in
   let rec read_lines acc =
@@ -42,15 +34,6 @@ let load_dictionary filepath =
   | Error err ->
       Printf.printf "Failed to load dictionary: %s\n%!" err
 
-
-(*END UTILS*)
-
-(*need to add an error for the file not found*)
-let initial_tile_bag : char list = read_letter_list "banana-dist.txt"
-let tile_bag_ref = ref initial_tile_bag
-let tile_bag_mutex = Lwt_mutex.create ()
-
-(*temporarily moving peek b/c lib dune is not building right now.*)
 (** [peek_random_tiles_from_bag tile_bag count] returns [count] tiles from [tile_bag] *)
 let peek_random_tiles_from_bag tile_bag count =
   let bag_size = List.length tile_bag in
@@ -64,62 +47,6 @@ let peek_random_tiles_from_bag tile_bag count =
     Printf.printf "Returning %d tiles\n%!" (List.length result);
     result
 
-let get_random_tiles : Dream.route =
-  Dream.get "/get_random_tiles" (fun request ->
-      let count = 
-        match Dream.query request "count" with
-        | Some s -> (try int_of_string s with _ -> 21)
-        | None -> 21
-      
-    in
-      (*let tiles = Lib.Solver.peek_random_tiles_from_bag tile_bag count in*)
-      (*let tiles = peek_random_tiles_from_bag tile_bag count in
-      let tile_bag = List.filter tile_bag ~f:(fun tile -> 
-        not (List.mem tiles tile ~equal:Char.equal)
-      ) in*)
-      (* Lock the mutex to prevent race conditions when multiple players request tiles *)
-      let%lwt tiles = Lwt_mutex.with_lock tile_bag_mutex (fun () ->
-        let tiles = peek_random_tiles_from_bag !tile_bag_ref count in
-        
-        (* Remove selected tiles from the shared bag *)
-        tile_bag_ref := List.filter !tile_bag_ref ~f:(fun tile -> 
-          not (List.mem tiles tile ~equal:Char.equal)
-        );
-        
-        Lwt.return tiles
-      ) in
-      let tiles_json = 
-        tiles 
-        |> List.map ~f:(fun c -> `String (String.make 1 c))
-        |> fun lst -> `List lst
-        |> Yojson.Basic.to_string
-      in
-      
-      Dream.json ~status:`OK
-        ~headers:[ ("Access-Control-Allow-Origin", "*") ]
-        tiles_json
-  )
-
-let hint : Dream.route =
-  Dream.get "/hint" (fun _ ->
-      
-      (*let word = Lib.Solver.get_the_word*)
-      let word = "hello" in
-      
-      (*returning a string for now: will return a character array later!*)
-       let hint_json = `String word |> Yojson.Basic.to_string in
-      Dream.json ~status:`OK
-        ~headers:[ ("Access-Control-Allow-Origin", "*") ]
-        hint_json
-
-      (*let hint_json = 
-        word
-        |> List.map ~f:(fun c -> `String (String.make 1 c))
-        |> fun lst -> `List lst
-        |> Yojson.Basic.to_string
-      in*)
-
-  )
 
 (** Validation helper functions *)
 
@@ -146,6 +73,60 @@ let validate_words (board : Banana_gram.Board.t) (dict : Validation.Dictionary.t
   match Validation.validate board dict with
   | Ok () -> Ok (List.length words)
   | Error invalid_words -> Error invalid_words
+(*END UTILS*)
+
+(*using mutation for the tile_bag because two players must access it, and it
+is initialized once on server startup*)
+let initial_tile_bag : char list = read_letter_list "banana-dist.txt"
+let tile_bag_ref = ref initial_tile_bag
+let tile_bag_mutex = Lwt_mutex.create ()
+
+let get_random_tiles : Dream.route =
+  Dream.get "/get_random_tiles" (fun request ->
+      let count = 
+        match Dream.query request "count" with
+        | Some s -> (try int_of_string s with _ -> 21)
+        | None -> 21
+      
+    in
+      (* Lock the mutex to prevent race conditions when multiple players request tiles *)
+      let%lwt tiles = Lwt_mutex.with_lock tile_bag_mutex (fun () ->
+        let tiles = peek_random_tiles_from_bag !tile_bag_ref count in
+        tile_bag_ref := List.filter !tile_bag_ref ~f:(fun tile -> 
+          not (List.mem tiles tile ~equal:Char.equal)
+        );
+        Lwt.return tiles
+      ) in
+      let tiles_json = 
+        tiles 
+        |> List.map ~f:(fun c -> `String (String.make 1 c))
+        |> fun lst -> `List lst
+        |> Yojson.Basic.to_string
+      in
+      
+      Dream.json ~status:`OK
+        ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+        tiles_json
+  )
+
+let hint : Dream.route =
+  Dream.get "/hint" (fun _ ->
+      let word = "hello" in
+      
+      (*returning a string for now: will return a character array from solver*)
+       let hint_json = `String word |> Yojson.Basic.to_string in
+      Dream.json ~status:`OK
+        ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+        hint_json
+
+      (*let hint_json = 
+        word
+        |> List.map ~f:(fun c -> `String (String.make 1 c))
+        |> fun lst -> `List lst
+        |> Yojson.Basic.to_string
+      in*)
+
+  )
 
 let validate : Dream.route =
   Dream.post "/validate" (fun request ->
@@ -169,7 +150,6 @@ let validate : Dream.route =
               | _ -> None)
           in
           
-          (* Create board from tiles *)
           (match Banana_gram.Board.of_tiles tiles with
           | Error err ->
               Printf.printf "Board creation failed: %s\n%!" err;
@@ -228,9 +208,6 @@ let validate : Dream.route =
         Dream.json ~status:`Bad_Request "\"Invalid JSON\""
         ~headers:[ ("Access-Control-Allow-Origin", "*") ]
   )
-
-(*working with a monad and mutation here: is that okay?*)
-
 
 let cors_preflight : Dream.route =
   Dream.options "/validate" (fun _ ->
