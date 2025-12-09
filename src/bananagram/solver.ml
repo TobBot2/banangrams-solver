@@ -1,9 +1,9 @@
 open Core
 
 module Utils = struct
-  module WordSet = Set.Make(struct type t = Word.t [@@deriving sexp, compare] end)
-  module WordMap = Map.Make(struct type t = Word.t [@@deriving sexp, compare] end)
-  module TileMap = Map.Make(struct type t = Tile.t [@@deriving sexp, compare] end)
+  module WordSet = Set.Make(struct type t = Banana_gram.word [@@deriving sexp, compare] end)
+  module WordMap = Map.Make(struct type t = char list [@@deriving sexp, compare] end)
+  module TileMap = Map.Make(struct type t = Banana_gram.tile [@@deriving sexp, compare] end)
 
   type t = {
     anagram_map : WordSet.t WordMap.t;
@@ -48,7 +48,7 @@ let calculate_hint utils rack board =
 (*           HELPER FUNCTIONS (private)           *)
 (* ********************************************** *)
 
-let get_word_to_play (utils : Utils.t) (rack : Tile.t list) (seed : Tile.t list) : Tile.Value.t list option =
+let get_word_to_play (utils : Utils.t) (rack : Banana_gram.tile list) (seed : Banana_gram.tile list) : char list option =
   let rec search stack best best_score search_count =
     let max_words_per_spot = 300000 in
     (* break conditions *)
@@ -56,19 +56,20 @@ let get_word_to_play (utils : Utils.t) (rack : Tile.t list) (seed : Tile.t list)
     else if Stack.is_empty stack then best
     
     (* main search loop *)
-    else
+    else begin
       (* get the next combination of tiles to try *)
       let so_far, checked_tiles_count = Stack.pop stack in
       (* how great would it be if we could make a word? *)
       let score = get_heuristic utils so_far seed in
-      let (new_best, new_best_score) =
+      let new_best, new_best_score =
         if score > best_score then begin
           let word = check_for_word utils so_far in
-          (* we found a word that's better than previous best *)
-          if word <> [] then (Some word, score)
-          (* we didn't find word that's better than previous best *)
-          else (best, best_score)
-        end else (best, best_score)
+          if word <> [] then (* we found a word that's better than previous best *)
+            (Some word, score)
+          else (* we didn't find word that's better than previous best *)
+              (best, best_score)
+        end else
+          (best, best_score)
       in
 
       (* what is the next tile to include or exclude? *)
@@ -83,18 +84,19 @@ let get_word_to_play (utils : Utils.t) (rack : Tile.t list) (seed : Tile.t list)
       end;
 
       search stack new_best new_best_score (search_count + 1)
+    end
   in
   let stack = Stack.create () in
   Stack.push (List.map seed ~f:(fun x -> (x, 0))) stack;
   search stack None 0 0
 
-let check_for_word (utils : Utils.t) (tiles : Tile.t list) : Tile.t list =
-  let sorted_base = List.sort Tile.compare tiles in
+let check_for_word (utils : Utils.t) (tiles : Banana_gram.tile list) : Banana_gram.tile list =
+  let sorted_base = List.sort Lib.Tile.compare tiles in
   match WordMap.find utils.anagram_map sorted_base with
   | None -> []
   | Some anagrams -> Set.nth_exn anagrams 0
 
-let get_heuristics (utils : Utils.t) (word : Tile.t list) (seed : Tile.t list) : int =
+let get_heuristics (utils : Utils.t) (word : Banana_gram.tile list) (seed : Banana_gram.tile list) : int =
   (* remove seed (already placed tiles) from word *)
   let used_letters = remove_tiles_from_pool word seed in
 
@@ -115,25 +117,25 @@ let remove_tiles_from_pool pool tiles =
   List.fold tiles ~init:pool ~f:(fun acc tile -> remove_one tile acc)
 
 (* return list of playable spots (spot = position * is_across) *)
-let find_playable_spots (board : Board.t) (tiles_count : int) : (Tile.t * bool) list =
+let find_playable_spots (board : Banana_gram.board) (tiles_count : int) : (Banana_gram.tile * bool) list =
   List.fold (Board.to_tiles board) ~init:[] ~f:(
     fun found_spots tile ->
       let check_and_add_across spots tile =
         if checkHorizontalSpacing board (Tile.position tile) tiles_count then
-          (tile ; true) :: spots
-        else spots
+          (tile, true) :: spots (* add valid spot (across=true) *)
+        else spots (* don't add spot *)
       in
       let check_and_add_down spots tile =
         if checkVerticalSpacing board (Tile.position tile) tiles_count then
-          (tile ; false) :: spots
-        else spots
+          (tile, false) :: spots (* add valid spot (across=true) *)
+        else spots (* don't add spot *)
       in
       (* conditionally add across/down spots to found_spots *)
       check_and_add_down (check_and_add_across found_spots tile) tile
   )
 
 (* check spacing to the left and right of a down-word *)
-let checkHorizontalSpacing (board : Board.t) (pos : Tile.Position.t) (tiles_count : int) : bool =
+let checkHorizontalSpacing (board : Banana_gram.board) (pos : Lib.Tile.Position.t) (tiles_count : int) : bool =
   List.fold (List.init 3 ~f:(fun x -> x-1)) ~init:true ~f:(
   (* loop -1, 0, 1 *)
     fun ret dCol ->
@@ -142,9 +144,9 @@ let checkHorizontalSpacing (board : Board.t) (pos : Tile.Position.t) (tiles_coun
         fun ret dRow ->
           let r, c = pos in
           let currPos = Tile.Position.create (r + dRow) (c + dCol) in
-          match Board.get currPos board with
+          match Lib.Board.get currPos board with
           | None -> ret (* if nothing there, then no worries. good. *)
-          | Some tile -> 
+          | Some _ -> 
             if dCol = 0 then
               ret (* don't care about tiles in row of origin tile as no new tiles can interfere *)
             else
@@ -153,18 +155,18 @@ let checkHorizontalSpacing (board : Board.t) (pos : Tile.Position.t) (tiles_coun
     )
 
 (* check spacing to the up and down of an across-word *)
-let checkVerticalSpacing (board : Board.t) (pos : Tile.Position.t) (tiles_count : int) : bool =
+let checkVerticalSpacing (board : Banana_gram.board) (pos : Lib.Tile.Position.t) (tiles_count : int) : bool =
   List.fold (List.init 3 ~f:(fun x -> x-1)) ~init:true ~f:(
   (* loop -1, 0, 1 *)
     fun ret dRow ->
-      List.fold (List.init (tiles_count * 2 + 3)) ~f:(fun x -> x - tiles_count) ~init:ret ~f:(
+      List.fold (List.init (tiles_count * 2 + 3) ~f:(fun x -> x - tiles_count)) ~init:ret ~f:(
       (* loop -tiles_count-1 .. tiles_count+1. Must check spacing all around tiles *)
         fun ret dCol ->
           let r, c = pos in
-          let currPos = Tile.Position.create (r + dRow) (c + dCol) in
-          match Board.get currPos board with
+          let currPos = Lib.Tile.Position.create (r + dRow) (c + dCol) in
+          match Lib.Board.get currPos board with
           | None -> ret (* if nothing there, then no worries. good. *)
-          | Some tile -> 
+          | Some _ -> 
             if dRow = 0 then
               ret (* don't care about tiles in col of origin tile as no new tiles can interfere *)
             else
