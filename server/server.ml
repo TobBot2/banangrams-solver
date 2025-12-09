@@ -36,6 +36,8 @@ let read_letter_list filename : char list =
 
 let dictionary_ref : Validation.Dictionary.t option ref = ref None
 
+let solver_utils_ref : Solver.Utils.t option ref = ref None
+
 let load_dictionary filepath =
   match Validation.Dictionary.load filepath with
   | Ok dict -> 
@@ -43,6 +45,10 @@ let load_dictionary filepath =
       Printf.printf "Dictionary loaded from %s\n%!" filepath
   | Error err ->
       Printf.printf "Failed to load dictionary: %s\n%!" err
+
+let load_solver dict_filepath dist_filepath =
+  solver_utils_ref := Some (Solver.set_up_utils dict_filepath dist_filepath);
+  Printf.printf "Solver loaded from \n  dictionary: %s\n  distribution: %s\n%!" dict_filepath dist_filepath
 
 let initial_tile_bag : char list = read_letter_list "banana-dist.txt"
 let tile_bag_ref = ref initial_tile_bag
@@ -260,12 +266,76 @@ let validate : Dream.route =
   )
 
 let hint : Dream.route =
-  Dream.get "/hint" (fun _ ->
-    let word = "hello" in
-    let hint_json = `String word |> Yojson.Basic.to_string in
-    Dream.json ~status:`OK
-      ~headers:[ ("Access-Control-Allow-Origin", "*") ]
-      hint_json
+  Dream.get "/hint" (fun request ->
+    let%lwt body = Dream.body request in
+    try
+      match Yojson.Basic.from_string body with 
+      | `Assoc pairs ->
+        begin
+          let board_data = List.Assoc.find_exn pairs ~equal:String.equal "board" in
+          let tiles =
+            match board_data with
+            | `Assoc board_pairs ->
+              List.filter_map board_pairs ~f:(fun (coord, json) ->
+                match json, String.split coord ~on:',' with
+                | `String letter, [col_str; row_str] when String.length letter = 1 ->
+                  (try
+                    let col = Int.of_string (String.strip row_str) in
+                    let row = Int.of_string (String.strip col_str) in
+                    Some (Banana_gram.Tile.create (Tile.Position.create row col) (String.get letter 0))
+                  with _ -> None)
+                | _ -> None)
+            | _ -> []
+          in
+
+          let rack_data = List.Assoc.find_exn pairs ~equal:String.equal "rack" in
+          let rack =
+            match rack_data with
+            | `List rack_list ->
+              List.filter_map rack_list ~f:(fun json ->
+                match json with
+                | `String letter when String.length letter = 1 ->
+                  Some (String.get letter 0)
+                | _ -> None)
+            | _ -> []
+          in
+
+          match Banana_gram.Board.of_tiles tiles with
+          | Error err ->
+            Dream.json ~status:`Bad_Request 
+              (sprintf "\"Error: %s\"" err)
+              ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+          
+          | Ok board ->
+              if Banana_gram.Board.is_empty board then
+                Dream.json ~status:`Bad_Request "\"Board is empty\""
+                  ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+              else
+                match !solver_utils_ref with
+                | None ->
+                  Dream.json ~status:`OK "\"No hint available\""
+                    ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+                | Some utils ->
+                  let hint = Solver.calculate_hint utils rack board in
+                  match hint with
+                  | None ->
+                    Dream.json ~status:`OK "\"No hint available\""
+                    ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+                  | Some (pos, word, across) ->
+                    let pos_text = Lib.Tile.Position.to_string pos in
+                    let word_text = String.of_char_list word in
+                    let direction_text = if across then "across" else "down" in
+                    let message = "You should play " ^ word_text ^ " going " ^ direction_text ^ " at " ^ pos_text in
+                    let hint_json = `String message |> Yojson.Basic.to_string in
+                    Dream.json ~status:`OK
+                      ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+                      hint_json
+        end
+      | _ -> Dream.json ~status:`Bad_Request "\"Expected object\""
+          ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+    with _ ->
+      Dream.json ~status:`Bad_Request "\"Invalid JSON\""
+        ~headers:[ ("Access-Control-Allow-Origin", "*") ]
   )
 
 let cors_preflight : Dream.route =
@@ -281,6 +351,7 @@ let cors_preflight : Dream.route =
 
 let () =
   load_dictionary "dictionary.txt";
+  load_solver "dictionary.txt" "banana-dist.txt";
   
   Dream.run ~port:8080
   @@ Dream.logger

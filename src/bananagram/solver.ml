@@ -63,7 +63,11 @@ let create_letter_scores_map (distribution_filename : string) : int Utils.ScoreM
   List.fold letters ~init:Utils.ScoreMap.empty ~f:(
     fun map letter ->
       let data =
-        let count = In_channel.input_line_exn in_file |> Int.of_string in
+        let count =
+          In_channel.input_line_exn in_file
+          |> String.split ~on:' '
+          |> List.hd_exn
+          |> Int.of_string in
         score_tile_value letter count
       in
       Map.set map ~key:letter ~data
