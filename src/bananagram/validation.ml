@@ -1,44 +1,20 @@
 open Core
 
-module type DICTIONARY = sig
-  type t
-  val load : string -> (t, string) result
-  val contains : t -> string -> bool
-end
-
-module Dictionary : DICTIONARY = struct
-  type t = String.Set.t
-  
-  let load filepath =
-    try
-      let lines = In_channel.read_lines filepath in
-      let words = 
-        List.map lines ~f:String.uppercase
-        |> String.Set.of_list 
-      in
-      Ok words
-    with
-    | Sys_error msg -> Error (sprintf "Failed to load dictionary: %s" msg)
-  
-  let contains dict word =
-    Set.mem dict (String.uppercase word)
-end
-
 let is_word_start_horizontal pos board =
-  let left = Lib.Tile.Position.left pos in
-  let right = Lib.Tile.Position.right pos in
+  let down = Lib.Tile.Position.down pos in
+  let up = Lib.Tile.Position.up pos in
   
   Banana_gram.Board.mem pos board
-  && not (Banana_gram.Board.mem left board)
-  && Banana_gram.Board.mem right board
+  && not (Banana_gram.Board.mem down board)
+  && Banana_gram.Board.mem up board
 
 let is_word_start_vertical_down pos board =
-  let up = Lib.Tile.Position.up pos in
-  let down = Lib.Tile.Position.down pos in
+  let right = Lib.Tile.Position.right pos in
+  let left = Lib.Tile.Position.left pos in
   
   Banana_gram.Board.mem pos board
-  && not (Banana_gram.Board.mem up board)
-  && Banana_gram.Board.mem down board
+  && not (Banana_gram.Board.mem right board)
+  && Banana_gram.Board.mem left board
 
 let extract_word_horizontal pos board =
   if not (is_word_start_horizontal pos board) then
@@ -49,7 +25,7 @@ let extract_word_horizontal pos board =
       | None -> List.rev acc
       | Some value ->
           let tile = Banana_gram.Tile.create current_pos value in
-          let next_pos = Lib.Tile.Position.right current_pos in
+          let next_pos = Lib.Tile.Position.up current_pos in
           collect_tiles next_pos (tile :: acc)
     in
     let tiles = collect_tiles pos [] in
@@ -67,7 +43,7 @@ let extract_word_vertical_down pos board =
       | None -> List.rev acc
       | Some value ->
           let tile = Banana_gram.Tile.create current_pos value in
-          let next_pos = Lib.Tile.Position.down current_pos in
+          let next_pos = Lib.Tile.Position.left current_pos in
           collect_tiles next_pos (tile :: acc)
     in
     let tiles = collect_tiles pos [] in
@@ -144,25 +120,3 @@ let validate board dict =
       Ok ()
     else
       Error invalid
-
-module Make (Dict : DICTIONARY) = struct
-  let find_invalid_words board dict =
-    let words = extract_all_words board in
-    List.filter_map words ~f:(fun word ->
-      let word_str = Banana_gram.Word.to_string word in
-      if Dict.contains dict word_str then
-        None
-      else
-        Some word_str
-    )
-  
-  let validate board dict =
-    if not (is_connected board) then
-      Error ["Board is not connected"]
-    else
-      let invalid = find_invalid_words board dict in
-      if List.is_empty invalid then
-        Ok ()
-      else
-        Error invalid
-end

@@ -34,7 +34,7 @@ let players_mutex = Lwt_mutex.create ()
   in
   read_lines []*)
 
-let dictionary_ref : Validation.Dictionary.t option ref = ref None
+let dictionary_ref : Dictionary.t option ref = ref None
 
 let solver_utils_ref : Solver.Utils.t option ref = ref None
 

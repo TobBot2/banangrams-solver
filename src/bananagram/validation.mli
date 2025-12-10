@@ -2,23 +2,6 @@ open Core
 
 (** Board validation: word extraction, connectivity, and dictionary checking *)
 
-(** Dictionary interface for word validation *)
-module type DICTIONARY = sig
-  type t
-  (** Dictionary type for word validation *)
-  
-  val load : string -> (t, string) result
-  (** [load filepath] loads a dictionary from a file.
-      File should contain one word per line. *)
-  
-  val contains : t -> string -> bool
-  (** [contains dict word] checks if [word] exists in the dictionary.
-      Case-insensitive. *)
-end
-
-(** Concrete Dictionary implementation *)
-module Dictionary : DICTIONARY
-
 (** Note: All functions below are meant to work with the Banana_gram module's instantiated types:
     - Banana_gram.board
     - Banana_gram.word  
@@ -103,17 +86,3 @@ val find_invalid_words : Banana_gram.board -> Dictionary.t -> string list
     Does not check connectivity - only word validity.
     Useful for debugging which specific words are problematic.
 *)
-
-module Make (Dict : DICTIONARY) : sig
-  val validate : Banana_gram.board -> Dict.t -> (unit, string list) result
-  (** [validate board dict] checks if board is valid:
-      1. All tiles are connected
-      2. All words (length >= 2) are in dictionary
-      
-      Returns:
-      - Ok () if valid
-      - Error invalid_words if validation fails *)
-  
-  val find_invalid_words : Banana_gram.board -> Dict.t -> string list
-  (** Returns list of words on board not in dictionary *)
-end

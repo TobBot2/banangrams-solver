@@ -36,27 +36,22 @@ module Position : sig
   include Comparable.S with type t := t
 end
 
-(** Functor to create Tile module for any value type *)
-module Make (V : VALUE) : sig
-  module Value : VALUE with type t = V.t
+module type TILE = sig
+  type t [@@deriving sexp, compare, equal]
+  type value_t [@@deriving sexp, compare, equal]
   
-  (** A tile is a record that has a value and position *)
-  type t = {
-    position : Position.t;
-    value : Value.t;
-  } [@@deriving sexp, compare, equal]
+  module Value : sig
+    type t = value_t
+    val to_string : t -> string
+  end
   
-  val create : Position.t -> V.t -> t
-  (** Create a tile with a position and value *)
-  
+  val create : Position.t -> value_t -> t
   val position : t -> Position.t
-  (** Get the position of the tile *)
-  
-  val value : t -> Value.t
-  (** Get the value of the tile *)
-  
+  val value : t -> value_t
   val to_string : t -> string
-  (** String representation: "V@(row,col)" *)
-
+  
   include Comparable.S with type t := t
 end
+
+(** Functor to create Tile module for any value type *)
+module Make (V : VALUE) : TILE with type value_t = V.t

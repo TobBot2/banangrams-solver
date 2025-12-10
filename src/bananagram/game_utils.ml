@@ -22,7 +22,7 @@ let read_letter_list filename : char list =
 
 
 let load_dictionary filepath dictionary_ref : unit=
-  match Validation.Dictionary.load filepath with
+  match Dictionary.load filepath with
   | Ok dict -> 
       dictionary_ref := Some dict;
       Printf.printf "Dictionary loaded from %s\n%!" filepath

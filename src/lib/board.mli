@@ -1,20 +1,8 @@
 open Core
 
-(** Signature for tiles used in boards *)
-module type TILE = sig
-  type t [@@deriving sexp, compare, equal]
-  type value_t [@@deriving sexp, compare, equal]
-  
-  val create : Tile.Position.t -> value_t -> t
-  val position : t -> Tile.Position.t
-  val value : t -> value_t
-  
-  include Comparable.S with type t := t
-end
-
 (** Functor to create Board module for any tile type *)
-module Make (T : TILE) : sig
-  module Tile_type : TILE with type t = T.t and type value_t = T.value_t
+module Make (T : Tile.TILE) : sig
+  module Tile_type : Tile.TILE with type t = T.t and type value_t = T.value_t
   
   (** A board is a map from Position to tile values *)
   type t = T.value_t Map.M(Tile.Position).t [@@deriving sexp, compare]

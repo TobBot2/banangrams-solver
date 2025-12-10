@@ -70,7 +70,7 @@ npm run dev
 This will output a localhost address (e.g., http://localhost:5173).
 Note: The game runs on this address, NOT localhost:8080.
 
-Terminal 3: Backend Server
+3. Terminal 3: Backend Server
 ./_build/default/server/server.exe
 
 Play the Game

@@ -1,6 +1,6 @@
 val read_letter_list: string -> char list
 
-val load_dictionary: string -> Validation.Dictionary.t option ref -> unit
+val load_dictionary: string -> Dictionary.t option ref -> unit
 
 val load_solver: string -> string -> Solver.Utils.t option ref -> unit
 
