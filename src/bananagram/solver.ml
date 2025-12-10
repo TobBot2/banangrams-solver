@@ -156,7 +156,9 @@ let get_heuristics (utils : Utils.t) (word : Banana_gram.Tile.Value.t list) (see
   let used_letters = 
     let rec remove_one tile lst =
       match lst with
-      | [] -> failwith "[ERROR] >> word doesn't contain seed somehow?"
+      | [] ->
+        printf "\nword:%s\nseed:%s" (String.of_char_list word) (String.of_char_list seed);
+        failwith "[ERROR] >> word doesn't contain seed somehow?"
       | hd :: tl ->
         if Banana_gram.Tile.Value.equal hd tile then tl
         else hd :: remove_one tile tl
@@ -187,8 +189,8 @@ let get_word_to_play (utils : Utils.t) (rack : Banana_gram.Tile.Value.t list) (s
         if score > best_score then begin
           let word = check_for_word utils so_far in
           match word with
-          | [] -> (Some word, score) (* we found a word that's better than previous best *)
-          | _ -> (best, best_score) (* we didn't find word that's better than previous best *)
+          | [] -> (best, best_score) (* we didn't find word that's better than previous best *)
+          | _ -> (Some word, score) (* we found a word that's better than previous best *)
         end else
           (best, best_score)
       in

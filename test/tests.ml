@@ -417,7 +417,7 @@ let test_solver_hint _ =
   let board = Banana_gram.Board.set tile_a board in
   let board = Banana_gram.Board.set tile_t board in
 
-  let rack = [ 'T'; 'O' ] in
+  let rack = [ 'T'; 'O'; ] in
 
   let hint = Solver.calculate_hint utils rack board in
   let hint_msg =
@@ -425,9 +425,7 @@ let test_solver_hint _ =
     | None -> "No hint available"
     | Some h -> Solver.hint_as_string h in
 
-  printf "hint: %s" hint_msg;
-
-  assert_equal 0 0
+  assert_equal "You should play TOT going down at (5,2)" hint_msg
 
 
 (*Bananagram tests*)
