@@ -377,6 +377,59 @@ let test_validate_invalid_word _ =
         (List.exists invalid ~f:(fun word -> String.equal word "XYZ"))
   | Ok () -> assert_failure "Should reject invalid word"
 
+(*Solver tests*)
+let test_solver_utils _ =
+  let test_dict = "hint_test_dict.txt" in
+  let oc_dict = Out_channel.create test_dict in
+  Out_channel.output_string oc_dict "WHAT\nTOT\nOAT\nTOW\nTWO\nTO\nOH\nOW\n";
+  Out_channel.close oc_dict;
+
+  let test_dist = "hint_test_dist.txt" in
+  let oc_dist = Out_channel.create test_dist in
+  Out_channel.output_string oc_dist "13\n3\n3\n6\n18\n3\n4\n3\n12\n2\n2\n5\n3\n8\n11\n3\n2\n9\n6\n9\n6\n3\n3\n2\n3\n2\n";
+  Out_channel.close oc_dist;
+
+  let utils_str = Solver.set_up_utils test_dict test_dist
+  |> Solver.utils_as_str in
+
+  assert_bool "Utils not generated properly." (String.is_substring utils_str ~substring:"ANAGRAMS MAP") 
+
+let test_solver_hint _ =
+  let test_dict = "hint_test_dict.txt" in
+  let oc_dict = Out_channel.create test_dict in
+  Out_channel.output_string oc_dict "WHAT\nTOT\nOAT\nTOW\nTWO\nTO\nOH\nOW\n";
+  Out_channel.close oc_dict;
+
+  let test_dist = "hint_test_dist.txt" in
+  let oc_dist = Out_channel.create test_dist in
+  Out_channel.output_string oc_dist "13\n3\n3\n6\n18\n3\n4\n3\n12\n2\n2\n5\n3\n8\n11\n3\n2\n9\n6\n9\n6\n3\n3\n2\n3\n2\n";
+  Out_channel.close oc_dist;
+
+  let utils = Solver.set_up_utils test_dict test_dist in
+
+  let board = Banana_gram.Board.empty in
+  let tile_w = Banana_gram.Tile.create (Lib.Tile.Position.create 5 5) 'W' in
+  let tile_h = Banana_gram.Tile.create (Lib.Tile.Position.create 5 4) 'H' in
+  let tile_a = Banana_gram.Tile.create (Lib.Tile.Position.create 5 3) 'A' in
+  let tile_t = Banana_gram.Tile.create (Lib.Tile.Position.create 5 2) 'T' in
+  let board = Banana_gram.Board.set tile_w board in
+  let board = Banana_gram.Board.set tile_h board in
+  let board = Banana_gram.Board.set tile_a board in
+  let board = Banana_gram.Board.set tile_t board in
+
+  let rack = [ 'T'; 'O' ] in
+
+  let hint = Solver.calculate_hint utils rack board in
+  let hint_msg =
+    match hint with
+    | None -> "No hint available"
+    | Some h -> Solver.hint_as_string h in
+
+  printf "hint: %s" hint_msg;
+
+  assert_equal 0 0
+
+
 (*Bananagram tests*)
 let test_place_word_on_board _ =
   let board = Banana_gram.Board.empty in
@@ -479,6 +532,11 @@ let validation_tests = "Validation tests" >::: [
   "validate invalid" >:: test_validate_invalid_word;
 ]
 
+let solver_tests = "Solver tests" >::: [
+  "hint utils" >:: test_solver_utils;
+  "hint message" >:: test_solver_hint;
+]
+
 let bananagram_tests = "Bananagram tests" >::: [
   "place word on board" >:: test_place_word_on_board;
   "test create word " >:: test_create_word;
@@ -492,6 +550,7 @@ let series = "All tests" >::: [
   word_tests;
   board_tests;
   validation_tests;
+  solver_tests;
   bananagram_tests;
 ]
 

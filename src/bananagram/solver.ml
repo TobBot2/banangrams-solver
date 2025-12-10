@@ -14,6 +14,14 @@ module Utils = struct
 
 end
 
+module Hint = struct
+    type t = {
+        pos : Lib.Tile.Position.t;
+        word : Banana_gram.Tile.Value.t list;
+        across : bool
+    }
+end
+
 (* ********************************************** *)
 (*         HELPER FUNCTION IMPLEMENTATIONS        *)
 (* ********************************************** *)
@@ -33,7 +41,8 @@ let get_words (dict_filename : string) : Banana_gram.Tile.Value.t list list =
   In_channel.create dict_filename
   |> In_channel.fold_lines ~init:[] ~f:(
     fun ls word ->
-      let word_as_char_ls = String.to_list word in
+      let upper = String.uppercase word in
+      let word_as_char_ls = String.to_list upper in
       word_as_char_ls :: ls
   )
 
@@ -51,6 +60,7 @@ let create_anagram_map (words : Banana_gram.Tile.Value.t list list) : Utils.Word
 
 let create_letter_scores_map (distribution_filename : string) : int Utils.ScoreMap.t =
   (* make list of letters to loop through *)
+  (* probably should be looping through list of valid tile values, not creating list *)
   let letters = List.init 26 ~f:(
     fun i ->
       let a_int = Char.to_int 'A' in
@@ -215,6 +225,32 @@ let set_up_utils dict_filename dist_filename =
   let letter_scores = create_letter_scores_map dist_filename in
   { Utils.anagram_map=anagram_map; Utils.letter_scores=letter_scores }
 
+(** [utils_as_str utils] returns string containing the value of utils *)
+let utils_as_str utils =
+  let anagrams_str =
+    utils.Utils.anagram_map
+    |> Map.to_alist
+    |> List.map ~f:(fun (word, anagrams) -> 
+      (word |> List.to_string ~f:Banana_gram.Tile.Value.to_string) ^ " -> " ^ 
+      (anagrams |> Set.to_list |> List.map ~f:(fun w -> w |> List.to_string ~f:Banana_gram.Tile.Value.to_string) |> String.concat ~sep:", ")
+    )
+    |> String.concat ~sep:"\n"
+  in
+  let anagrams = "\n\n**********************************\nANAGRAMS MAP\n\n" ^ anagrams_str ^ "\n\n" in
+
+  let letter_scores_str =
+    utils.Utils.letter_scores
+    |> Map.to_alist
+    |> List.map ~f:(fun (letter, score) ->
+      (String.of_char letter) ^ " -> " ^
+      (score |> Int.to_string)
+    )
+    |> String.concat ~sep:"\n"
+  in
+  let letter_scores = "\n\n**********************************\nLETTER SCORES\n\n" ^ letter_scores_str ^ "\n\n" in
+
+  anagrams ^ letter_scores
+
 (** [calculate_hint utils rack board] returns a spot - ( pos * word * across ) option - where pos is the start pos
     of the word. word is a Tile.Value.t list or None *)
 let calculate_hint utils rack board =
@@ -243,4 +279,12 @@ let calculate_hint utils rack board =
   | None -> None
   | Some spot ->
     let pos, word, _, across = spot in
-    Some ( pos, word, across )
+    Some { Hint.pos=pos; Hint.word=word; Hint.across=across }
+
+
+(** [hint_as_string hint] returns a string message containing the info about the hint *)
+let hint_as_string hint =
+    let pos_text = Lib.Tile.Position.to_string hint.Hint.pos in
+    let word_text = String.of_char_list hint.Hint.word in
+    let direction_text = if hint.Hint.across then "across" else "down" in
+    "You should play " ^ word_text ^ " going " ^ direction_text ^ " at " ^ pos_text

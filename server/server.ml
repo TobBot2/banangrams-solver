@@ -321,11 +321,8 @@ let hint : Dream.route =
                   | None ->
                     Dream.json ~status:`OK "\"No hint available\""
                     ~headers:[ ("Access-Control-Allow-Origin", "*") ]
-                  | Some (pos, word, across) ->
-                    let pos_text = Lib.Tile.Position.to_string pos in
-                    let word_text = String.of_char_list word in
-                    let direction_text = if across then "across" else "down" in
-                    let message = "You should play " ^ word_text ^ " going " ^ direction_text ^ " at " ^ pos_text in
+                  | Some h ->
+                    let message = Solver.hint_as_string h in
                     let hint_json = `String message |> Yojson.Basic.to_string in
                     Dream.json ~status:`OK
                       ~headers:[ ("Access-Control-Allow-Origin", "*") ]
