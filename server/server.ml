@@ -14,7 +14,7 @@ type player_state = {
 let players_ref : (string, player_state) Hashtbl.t = Hashtbl.create (module String)
 let players_mutex = Lwt_mutex.create ()
 
-let read_letter_list filename : char list =
+(*let read_letter_list filename : char list =
   let ic = In_channel.create filename in
   let rec read_lines acc =
     match In_channel.input_line ic with
@@ -32,13 +32,13 @@ let read_letter_list filename : char list =
         Printf.printf "Returning %d tiles in dict\n%!" (List.length acc);
         List.rev acc
   in
-  read_lines []
+  read_lines []*)
 
 let dictionary_ref : Validation.Dictionary.t option ref = ref None
 
 let solver_utils_ref : Solver.Utils.t option ref = ref None
 
-let load_dictionary filepath =
+(*let load_dictionary filepath dictionary_ref=
   match Validation.Dictionary.load filepath with
   | Ok dict -> 
       dictionary_ref := Some dict;
@@ -46,15 +46,15 @@ let load_dictionary filepath =
   | Error err ->
       Printf.printf "Failed to load dictionary: %s\n%!" err
 
-let load_solver dict_filepath dist_filepath =
+let load_solver dict_filepath dist_filepath solver_utils_ref=
   solver_utils_ref := Some (Solver.set_up_utils dict_filepath dist_filepath);
-  Printf.printf "Solver loaded from \n  dictionary: %s\n  distribution: %s\n%!" dict_filepath dist_filepath
+  Printf.printf "Solver loaded from \n  dictionary: %s\n  distribution: %s\n%!" dict_filepath dist_filepath*)
 
-let initial_tile_bag : char list = read_letter_list "banana-dist.txt"
+let initial_tile_bag : char list = Game_utils.read_letter_list "banana-dist.txt"
 let tile_bag_ref = ref initial_tile_bag
 let tile_bag_mutex = Lwt_mutex.create ()
 
-let peek_random_tiles_from_bag (tile_bag : char list) (count : int) : char list * char list =
+(*let peek_random_tiles_from_bag (tile_bag : char list) (count : int) : char list * char list =
   let bag_size = List.length tile_bag in
   let actual_count = Int.min count bag_size in
   if actual_count = 0 then ([], tile_bag)
@@ -63,7 +63,7 @@ let peek_random_tiles_from_bag (tile_bag : char list) (count : int) : char list 
     let result, remaining = List.split_n shuffled actual_count in
    (*let result = List.sub shuffled ~pos:0 ~len:actual_count in*)
     Printf.printf "Returning %d tiles\n%!" (List.length result);
-    (result, remaining)
+    (result, remaining)*)
 
 (* Generate unique player ID *)
 let generate_player_id () =
@@ -92,7 +92,7 @@ let get_or_create_player player_id : player_state Lwt.t =
         Lwt.return updated
     | None ->
         (* Create new player with initial tiles *)
-        let tiles, remaining = peek_random_tiles_from_bag !tile_bag_ref 21 in
+        let tiles, remaining = Game_utils.peek_random_tiles_from_bag !tile_bag_ref 21 in
         (*tile_bag_ref := List.filter !tile_bag_ref ~f:(fun tile -> 
           not (List.mem tiles tile ~equal:Char.equal)
         );*)
@@ -167,7 +167,7 @@ let draw_tiles : Dream.route =
           
           let%lwt updated_tiles = Lwt_mutex.with_lock tile_bag_mutex (fun () ->
             let%lwt player = get_or_create_player player_id in
-            let new_tiles, remaining = peek_random_tiles_from_bag !tile_bag_ref count in
+            let new_tiles, remaining = Game_utils.peek_random_tiles_from_bag !tile_bag_ref count in
             Printf.printf "Player %s requested %d — returned %d tiles: %s\n%!"
               player_id count (List.length new_tiles) (String.of_char_list new_tiles);
             
@@ -350,8 +350,8 @@ let cors_preflight : Dream.route =
   )
 
 let () =
-  load_dictionary "dictionary.txt";
-  load_solver "dictionary.txt" "banana-dist.txt";
+  Game_utils.load_dictionary "dictionary.txt" dictionary_ref;
+  Game_utils.load_solver "dictionary.txt" "banana-dist.txt" solver_utils_ref;
   
   Dream.run ~port:8080
   @@ Dream.logger
