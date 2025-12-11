@@ -144,6 +144,121 @@ React.useEffect0(() => {
   Some(() => Js.Global.clearInterval(intervalId))
 })
 
+/* ---------- Shared Helpers ---------- */
+
+/* Build board map from grid */
+let buildBoardMap = grid =>
+  grid
+  ->Array.mapWithIndex((item, index) => {
+      switch item {
+      | Some((letter, _id)) => {
+          let (x, y) = indexToCoord(index)
+          let key = Int.toString(x) ++ "," ++ Int.toString(y)
+          Some((key, JSON.Encode.string(letter)))
+        }
+      | None => None
+      }
+    })
+  ->Array.filterMap(x => x)
+  ->Array.reduce(Js.Dict.empty(), (dict, (key, encoded)) => {
+      Js.Dict.set(dict, key, encoded)
+      dict
+    })
+
+/* Build rack from letters */
+let buildRack = letters =>
+  letters->Array.map(((letter, _id)) => JSON.Encode.string(letter))
+
+/* Build a JSON payload with variable fields */
+let buildPayload = (playerId, ~board=?, ~rack=?) => {
+  let payload = Js.Dict.empty()
+  Js.Dict.set(payload, "playerId", JSON.Encode.string(playerId))
+  switch board {
+  | Some(b) => Js.Dict.set(payload, "board", JSON.Encode.object(b))
+  | None => ()
+  }
+  switch rack {
+  | Some(r) => Js.Dict.set(payload, "rack", JSON.Encode.array(r))
+  | None => ()
+  }
+  payload->JSON.Encode.object->JSON.stringify
+}
+
+/* POST helper */
+let postJson = (url, body) => {
+  let options = {
+    "method": "POST",
+    "headers": {"Content-Type": "application/json"},
+    "body": body,
+  }
+  fetchOptions(url, options)
+}
+
+/* ---------- Hint ---------- */
+
+let handleHint = async () => {
+  switch playerId {
+  | None => alert("Not connected to game")
+  | Some(id) => {
+      try {
+        let board = buildBoardMap(grid)
+        let rack = buildRack(letters)
+        let options = buildPayload(id, ~board=board, ~rack=rack)
+
+        let response = await postJson("http://localhost:8080/hint", options)
+        let json = await response->json
+
+        let word =
+          switch json->JSON.Decode.string {
+          | Some(w) => w
+          | None => ""
+          }
+
+        setHintWord(_ => Some(word))
+      } catch {
+      | _ =>
+        Console.log("Failed to fetch hint")
+        setHintWord(_ => None)
+      }
+    }
+  }
+}
+
+/* ---------- Validate ---------- */
+
+let sendBoardToServer = async grid => {
+  switch playerId {
+  | None => alert("Not connected to game")
+  | Some(id) => {
+      try {
+        let board = buildBoardMap(grid)
+        let rack = buildRack(letters)
+        let options = buildPayload(id, ~board=board, ~rack=rack)
+
+        let response = await postJson("http://localhost:8080/validate", options)
+        let json = await response->json
+
+        let status = response["status"]
+        if status >= 200 && status < 300 {
+          alert("✓ Board is valid!")
+        } else {
+          switch json->JSON.Decode.string {
+          | Some(msg) => alert("✗ " ++ msg)
+          | None => alert("✗ Validation failed")
+          }
+        }
+      } catch {
+      | _ => alert("✗ Failed to validate board")
+      }
+    }
+  }
+}
+
+let handleValidate = () => {
+  sendBoardToServer(grid)->ignore
+}
+
+/*
   let sendBoardToServer = async grid => {
     switch playerId {
     | None => alert("Not connected to game")
@@ -199,7 +314,7 @@ React.useEffect0(() => {
 
   let handleValidate = () => {
     sendBoardToServer(grid)->ignore
-  }
+  }*/
 
   let fetchMoreTiles = async () => {
   switch playerId {
@@ -273,27 +388,8 @@ React.useEffect0(() => {
     }
   }
 }
-  
-  /*let handleHint = async () => {
-    try {
-      let response = await fetch("http://localhost:8080/hint")
-      let json = await response->json
-      
-      let word = switch json->JSON.Decode.string {
-      | Some(w) => w
-      | None => ""
-      }
-      
-      setHintWord(_ => Some(word))
-    } catch {
-    | _ => {
-        Console.log("Failed to fetch hint")
-        setHintWord(_ => None)
-      }
-    }
-  }*/
 
-
+/*
   let handleHint = async () => {
   switch playerId {
   | None => alert("Not connected to game")
@@ -350,7 +446,7 @@ React.useEffect0(() => {
       }
     }
   }
-}
+}*/
   let handleDragStart = tileWithId => e => {
     setDragged(_ => Some(tileWithId))
   }
@@ -441,79 +537,4 @@ React.useEffect0(() => {
           </button>
           <button 
             onClick={_ => handleValidate()->ignore}
-            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
-            {"Validate"->React.string}
-          </button>
-        </div>
-      </div>
-      
-      <div className="flex gap-3 mb-8 flex-wrap min-h-20 p-4 bg-gray-100 rounded overflow-visible">
-        {letters->Array.length > 0
-          ? letters
-            ->Array.mapWithIndex((letter, index) => {
-              let (actual_letter, id) = letter
-              <div
-                key={actual_letter ++ "-" ++ Int.toString(index)}
-                draggable=true
-                onDragStart={handleDragStart(letter)}
-                className="cursor-move px-4 py-2 bg-blue-300 rounded shadow-md text-xl font-bold select-none hover:bg-blue-400"
-              >
-                {React.string(actual_letter)}
-              </div>
-            })
-            ->React.array
-          : <div className="text-gray-500"> {"No letters available"->React.string} </div>
-        }
-      </div>
-
-      <h2 className="text-2xl font-bold mb-4"> {"Grid"->React.string} </h2>
-      <div className="inline-block border border-gray-400">
-        <div style={ReactDOM.Style.make(~display="grid", ~gridTemplateColumns="repeat(31, 2rem)", ())}>
-          {grid
-            ->Array.mapWithIndex((item, index) => {
-              let centerIndex = (gridRows * gridCols) / 2
-              let isCenter = index === centerIndex
-              let bgColor = isCenter ? "bg-blue-200" : "bg-white"
-              let (x, y) = indexToCoord(index)
-              let showLabel = x === 0 || y === 0
-              <div
-                key={Int.toString(index)}
-                onDrop={handleDrop(index)}
-                onDragOver={handleDragOver}
-                className={("relative w-8 h-8 border border-gray-300 flex items-center justify-center hover:bg-gray-50 " ++ bgColor )}
-              >
-                 //{showLabel ? 
-                 // <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 font-semibold pointer-events-none">
-                 //   {React.string(x === 0 ? Int.toString(y) : Int.toString(x))}
-                 // </div>
-                //: React.null}
-                {switch item {
-                | Some(item) => {
-                    let (actual_letter, id) = item
-                    <div
-                      onClick={_ => handleRemoveFromGrid(index, item)}
-                      className="cursor-pointer w-full h-full flex items-center justify-center bg-green-400 text-sm font-bold select-none hover:bg-red-400"
-                      title="Click to remove"
-                    >
-                      {React.string(actual_letter)}
-                    </div>
-                  }
-                | None => //React.null
-                {showLabel ? 
-                  <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 font-semibold pointer-events-none">
-                    {React.string(x === 0 ? Int.toString(y) : Int.toString(x))}
-                  </div>
-                : React.null}
-                }}
-              </div>
-            })
-            ->React.array}
-        </div>
-      </div>
-      
-      <p className="mt-4 text-sm text-gray-600">
-        {"Drag letters to the grid. Click placed letters to remove them."->React.string}
-      </p>
-    </div>
-  }
-}
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-

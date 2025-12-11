@@ -172,37 +172,82 @@ function App(props) {
                     clearInterval(intervalId);
                   });
         }), []);
+  var buildBoardMap = function (grid) {
+    return Core__Array.reduce(Core__Array.filterMap(grid.map(function (item, index) {
+                        if (item === undefined) {
+                          return ;
+                        }
+                        var match = indexToCoord(index);
+                        var key = match[0].toString() + "," + match[1].toString();
+                        return [
+                                key,
+                                item[0]
+                              ];
+                      }), (function (x) {
+                      return x;
+                    })), {}, (function (dict, param) {
+                  dict[param[0]] = param[1];
+                  return dict;
+                }));
+  };
+  var buildRack = function (letters) {
+    return letters.map(function (param) {
+                return param[0];
+              });
+  };
+  var buildPayload = function (playerId, board, rack) {
+    var payload = {};
+    payload["playerId"] = playerId;
+    if (board !== undefined) {
+      payload["board"] = board;
+    }
+    if (rack !== undefined) {
+      payload["rack"] = rack;
+    }
+    return JSON.stringify(payload);
+  };
+  var postJson = function (url, body) {
+    var options = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: body
+    };
+    return fetch(url, options);
+  };
+  var handleHint = async function () {
+    if (playerId !== undefined) {
+      try {
+        var board = buildBoardMap(grid);
+        var rack = buildRack(letters);
+        var options = buildPayload(playerId, board, rack);
+        var response = await postJson("http://localhost:8080/hint", options);
+        var json = await response.json();
+        var w = Core__JSON.Decode.string(json);
+        var word = w !== undefined ? w : "";
+        return setHintWord(function (param) {
+                    return word;
+                  });
+      }
+      catch (exn){
+        console.log("Failed to fetch hint");
+        return setHintWord(function (param) {
+                    
+                  });
+      }
+    } else {
+      window.alert("Not connected to game");
+      return ;
+    }
+  };
   var sendBoardToServer = async function (grid) {
     if (playerId !== undefined) {
       try {
-        var boardMap = Core__Array.reduce(Core__Array.filterMap(grid.map(function (item, index) {
-                      if (item === undefined) {
-                        return ;
-                      }
-                      var match = indexToCoord(index);
-                      var key = match[0].toString() + "," + match[1].toString();
-                      return [
-                              key,
-                              item[0]
-                            ];
-                    }), (function (x) {
-                    return x;
-                  })), {}, (function (dict, param) {
-                dict[param[0]] = param[1];
-                return dict;
-              }));
-        var payload = {};
-        payload["playerId"] = playerId;
-        payload["board"] = boardMap;
-        var json_data = JSON.stringify(payload);
-        var options = {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: json_data
-        };
-        var response = await fetch("http://localhost:8080/validate", options);
+        var board = buildBoardMap(grid);
+        var rack = buildRack(letters);
+        var options = buildPayload(playerId, board, rack);
+        var response = await postJson("http://localhost:8080/validate", options);
         var json = await response.json();
         var status = response.status;
         if (status >= 200 && status < 300) {
@@ -297,59 +342,6 @@ function App(props) {
       }
     } else {
       console.log("No player ID");
-      return ;
-    }
-  };
-  var handleHint = async function () {
-    if (playerId !== undefined) {
-      try {
-        var boardMap = Core__Array.reduce(Core__Array.filterMap(grid.map(function (item, index) {
-                      if (item === undefined) {
-                        return ;
-                      }
-                      var match = indexToCoord(index);
-                      var key = match[0].toString() + "," + match[1].toString();
-                      return [
-                              key,
-                              item[0]
-                            ];
-                    }), (function (x) {
-                    return x;
-                  })), {}, (function (dict, param) {
-                dict[param[0]] = param[1];
-                return dict;
-              }));
-        var rack = letters.map(function (param) {
-              return param[0];
-            });
-        var payload = {};
-        payload["playerId"] = playerId;
-        payload["board"] = boardMap;
-        payload["rack"] = rack;
-        var json_data = JSON.stringify(payload);
-        var options = {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: json_data
-        };
-        var response = await fetch("http://localhost:8080/hint", options);
-        var json = await response.json();
-        var w = Core__JSON.Decode.string(json);
-        var word = w !== undefined ? w : "";
-        return setHintWord(function (param) {
-                    return word;
-                  });
-      }
-      catch (exn){
-        console.log("Failed to fetch hint");
-        return setHintWord(function (param) {
-                    
-                  });
-      }
-    } else {
-      window.alert("Not connected to game");
       return ;
     }
   };
@@ -535,18 +527,4 @@ function App(props) {
                         className: "inline-block border border-gray-400"
                       }),
                   JsxRuntime.jsx("p", {
-                        children: "Drag letters to the grid. Click placed letters to remove them.",
-                        className: "mt-4 text-sm text-gray-600"
-                      })
-                ],
-                className: "max-w-4xl mx-auto p-8 pt-150 overflow-auto"
-              });
-  }
-}
-
-var make = App;
-
-export {
-  make ,
-}
-/* react Not a pure module */
+                        children: "Drag letters to the grid. Click placed letters to remove 

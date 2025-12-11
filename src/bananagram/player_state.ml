@@ -56,4 +56,5 @@ let get_or_create_player tile_bag_ref players_ref player_id : player_state Lwt.t
         Printf.printf "Created new player: %s\n%!" player_id;
         let _ = new_player.board in (*dummy to avoid build error*)
         let _ = new_player.last_active in (*dummy to avoid build error*)
-        Lwt.return new_
+        Lwt.return new_player
+  )
