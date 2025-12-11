@@ -5,6 +5,7 @@ type player_state = {
   tiles: char list;
   board: (int * int * char) list; (* row, col, letter *)
   last_active: float;
+  peel_tiles: char list;
 }
 
 let generate_player_id () =
@@ -51,6 +52,7 @@ let get_or_create_player tile_bag_ref players_ref player_id : player_state Lwt.t
           tiles = tiles;
           board = [];
           last_active = current_time;
+          peel_tiles = [];
         } in
         Hashtbl.set players_ref ~key:player_id ~data:new_player;
         Printf.printf "Created new player: %s\n%!" player_id;

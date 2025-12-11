@@ -111,6 +111,39 @@ let game_state : Dream.route =
       response
   )
 
+(* Get current peel state - do players need an extra tile --  check associaed player state using player_ref and send peel tiles as reponse
+      set peel_tiles to empty list after sending response*)
+let peel_state : Dream.route =
+  Dream.post "/peel_state" (fun request ->
+    let%lwt body = Dream.body request in
+    try
+      match Yojson.Basic.from_string body with
+      | `Assoc pairs ->
+          let player_id = List.Assoc.find_exn pairs ~equal:String.equal "playerId" 
+            |> Yojson.Basic.Util.to_string in
+          let player_opt = Hashtbl.find players_ref player_id in
+          (match player_opt with
+          | None ->
+              Dream.json ~status:`Bad_Request "\"Player not found\""
+                ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+          | Some player ->
+              let peel_tiles = player.peel_tiles in
+              let updated_player = { player with peel_tiles = [] } in
+              Hashtbl.set players_ref ~key:player_id ~data:updated_player;
+
+              let response = `Assoc [
+                ("peelTiles", `List (List.map peel_tiles ~f:(fun c -> `String (String.make 1 c))));
+              ] |> Yojson.Basic.to_string in
+              
+              Dream.json ~status:`OK response
+                ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+          )
+      | _ -> Dream.json ~status:`Bad_Request "\"Expected object\""
+          ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+    with _ ->
+      Dream.json ~status:`Bad_Request "\"Invalid JSON\""
+        ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+  )
 
 (* Validate board for specific player *)
 let validate : Dream.route =
@@ -120,7 +153,6 @@ let validate : Dream.route =
       match Yojson.Basic.from_string body with 
       | `Assoc pairs ->
           let board_data = List.Assoc.find_exn pairs ~equal:String.equal "board" in
-          
           let tiles = match board_data with
           | `Assoc board_pairs ->
               List.filter_map board_pairs ~f:(fun (coord, json) ->
@@ -134,6 +166,18 @@ let validate : Dream.route =
                 | _ -> None)
           | _ -> []
           in
+
+        let rack_data = List.Assoc.find_exn pairs ~equal:String.equal "rack" in
+          let rack =
+            match rack_data with
+            | `List rack_list ->
+              List.filter_map rack_list ~f:(fun json ->
+                match json with
+                | `String letter when String.length letter = 1 ->
+                  Some (String.get letter 0)
+                | _ -> None)
+            | _ -> []
+            in
           
           (match Banana_gram.Board.of_tiles tiles with
           | Error err ->
@@ -156,6 +200,41 @@ let validate : Dream.route =
                 | Some dict ->
                     (match Validation.validate board dict with
                     | Ok () ->
+                        let%lwt () = 
+                          if List.is_empty rack then
+                            Lwt_mutex.with_lock tile_bag_mutex (fun () ->
+                              (* Get all player IDs *)
+                              let player_ids = Hashtbl.keys players_ref in
+                              let num_players = List.length player_ids in
+                              
+                              (* Draw one tile per player from the bag *)
+                              let new_tiles, remaining = 
+                                Game_utils.peek_random_tiles_from_bag !tile_bag_ref num_players 
+                              in
+                              
+                              (* Update the tile bag *)
+                              tile_bag_ref := remaining;
+                              Printf.printf "PEEL triggered! Drew %d tiles, %d remaining in bag\n%!" 
+                                (List.length new_tiles) (List.length remaining);
+                              
+                              (* Distribute one tile to each player's peel_tiles *)
+                              List.iter2_exn player_ids new_tiles ~f:(fun player_id tile ->
+                                match Hashtbl.find players_ref player_id with
+                                | Some player ->
+                                    let updated_player = { 
+                                      player with 
+                                      peel_tiles = tile :: player.peel_tiles 
+                                    } in
+                                    Hashtbl.set players_ref ~key:player_id ~data:updated_player;
+                                    Printf.printf "Player %s received peel tile: %c\n%!" player_id tile
+                                | None -> ()
+                              );
+                              
+                              Lwt.return_unit
+                            )
+                          else
+                            Lwt.return_unit
+                        in
                         let num_words = List.length (Validation.extract_all_words board) in
                         Dream.json ~status:`OK 
                           (sprintf "\"Valid! %d words\"" num_words)
@@ -260,6 +339,7 @@ let () =
        cors_preflight;
        join_game;
        game_state;
+       peel_state;
        draw_tiles;
        hint;
        validate;
