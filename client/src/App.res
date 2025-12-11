@@ -154,30 +154,42 @@ React.useEffect1(() => {
           let response = await fetchOptions("http://localhost:8080/peel_state", options)
           let json = await response->json
           
-          switch json->Js.Json.decodeArray {
-          | Some(arr) => {
-              let newTiles = arr->Array.filterMap(item => Js.Json.decodeString(item))
-              setLetters(prevLetters => {
-                // get current max id
-                let maxId = prevLetters
-                  ->Array.map(((_, id)) => {
-                    switch Int.fromString(id) {
-                    | Some(n) => n
-                    | None => 0
-                    }
-                  })
-                  ->Array.reduce(0, (acc, n) => max(acc, n))
-                
-                // add current max id so ids don't collide
-                let newTilesWithIds = newTiles->Array.mapWithIndex((letter, idx) => 
-                  (letter, Int.toString(maxId + idx + 1))
-                )
-                
-                // add new tiles to pre-existing letters
-                Array.concat(prevLetters, newTilesWithIds)
-              })
+          switch json->Js.Json.decodeObject {
+          | Some(obj) => {
+            let newTiles = switch obj->Js.Dict.get("peelTiles") {
+            | Some(val) => {
+                switch val->Js.Json.decodeArray {
+                | Some(arr) => arr->Array.filterMap(item => Js.Json.decodeString(item))
+                | None => []
+                }
+              }
+            | None => {
+                []
+              }
             }
-          | None => ()
+
+            setLetters(prevLetters => {
+              // get current max id
+              let maxId = prevLetters
+                ->Array.map(((_, id)) => {
+                  switch Int.fromString(id) {
+                  | Some(n) => n
+                  | None => 0
+                  }
+                })
+                ->Array.reduce(0, (acc, n) => max(acc, n))
+              
+              // add current max id so ids don't collide
+              let newTilesWithIds = newTiles->Array.mapWithIndex((letter, idx) => 
+                (letter, Int.toString(maxId + idx + 1))
+              )
+
+              // add new tiles to pre-existing letters
+              let result = Array.concat(prevLetters, newTilesWithIds)
+              result
+            })
+            }
+          | None => Console.log("Failed to decode as array")
           }
           
         } catch {

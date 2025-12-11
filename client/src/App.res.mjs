@@ -180,34 +180,42 @@ function App(props) {
                 };
                 var response = await fetch("http://localhost:8080/peel_state", options);
                 var json = await response.json();
-                var arr = Js_json.decodeArray(json);
-                if (arr === undefined) {
-                  return ;
-                }
-                var newTiles = Core__Array.filterMap(arr, Js_json.decodeString);
-                return setLetters(function (prevLetters) {
-                            var maxId = Core__Array.reduce(prevLetters.map(function (param) {
-                                      var n = Core__Int.fromString(param[1], undefined);
-                                      if (n !== undefined) {
-                                        return n;
+                var obj = Js_json.decodeObject(json);
+                if (obj !== undefined) {
+                  var val = Js_dict.get(obj, "peelTiles");
+                  var newTiles;
+                  if (val !== undefined) {
+                    var arr = Js_json.decodeArray(val);
+                    newTiles = arr !== undefined ? Core__Array.filterMap(arr, Js_json.decodeString) : [];
+                  } else {
+                    newTiles = [];
+                  }
+                  return setLetters(function (prevLetters) {
+                              var maxId = Core__Array.reduce(prevLetters.map(function (param) {
+                                        var n = Core__Int.fromString(param[1], undefined);
+                                        if (n !== undefined) {
+                                          return n;
+                                        } else {
+                                          return 0;
+                                        }
+                                      }), 0, (function (acc, n) {
+                                      if (acc > n) {
+                                        return acc;
                                       } else {
-                                        return 0;
+                                        return n;
                                       }
-                                    }), 0, (function (acc, n) {
-                                    if (acc > n) {
-                                      return acc;
-                                    } else {
-                                      return n;
-                                    }
-                                  }));
-                            var newTilesWithIds = newTiles.map(function (letter, idx) {
-                                  return [
-                                          letter,
-                                          ((maxId + idx | 0) + 1 | 0).toString()
-                                        ];
-                                });
-                            return prevLetters.concat(newTilesWithIds);
-                          });
+                                    }));
+                              var newTilesWithIds = newTiles.map(function (letter, idx) {
+                                    return [
+                                            letter,
+                                            ((maxId + idx | 0) + 1 | 0).toString()
+                                          ];
+                                  });
+                              return prevLetters.concat(newTilesWithIds);
+                            });
+                }
+                console.log("Failed to decode as array");
+                return ;
               }
               catch (exn){
                 console.log("Failed to fetch peel state");
