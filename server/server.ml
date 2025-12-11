@@ -2,89 +2,27 @@ open Core
 open Lib
 open Bananagram
 
-(* Player state management *)
-(*
-type player_state = {
-  id: string;
-  tiles: char list;
-  board: (int * int * char) list; (* row, col, letter *)
-  last_active: float;
-}*)
-
 (* Global game state *)
 let players_ref : (string, Player_state.player_state) Hashtbl.t = Hashtbl.create (module String)
 (*let players_mutex = Lwt_mutex.create ()*)
 
-let dictionary_ref : Dictionary.t option ref = ref None
-
-let solver_utils_ref : Solver.Utils.t option ref = ref None
+let dictionary = 
+  let filepath = "dictionary.txt" in
+  match Dictionary.load filepath with
+  | Ok dict -> 
+    Printf.printf "Dictionary loaded from %s\n%!" filepath;
+    Some dict
+  | Error err ->
+    Printf.printf "Failed to load dictionary: %s\n%!" err;
+    None
+  
+let solver_utils =
+  Printf.printf "Solver utils loaded\n";
+  Solver.set_up_utils "dictionary.txt" "banana-dist.txt"
 
 let initial_tile_bag : char list = Game_utils.read_letter_list "banana-dist.txt"
 let tile_bag_ref = ref initial_tile_bag
 let tile_bag_mutex = Lwt_mutex.create ()
-
-(*let peek_random_tiles_from_bag (tile_bag : char list) (count : int) : char list * char list =
-  let bag_size = List.length tile_bag in
-  let actual_count = Int.min count bag_size in
-  if actual_count = 0 then ([], tile_bag)
-  else
-    let shuffled = List.permute ~random_state:(Random.State.make_self_init ()) tile_bag in
-    let result, remaining = List.split_n shuffled actual_count in
-   (*let result = List.sub shuffled ~pos:0 ~len:actual_count in*)
-    Printf.printf "Returning %d tiles\n%!" (List.length result);
-    (result, remaining)*)
-
-
-(* Generate unique player ID *)
-(*let generate_player_id () =
-  let timestamp = 
-    Time_ns.now () 
-    |> Time_ns.to_span_since_epoch 
-    |> Time_ns.Span.to_int_sec
-  in
-  let random = Random.int 10000 in
-  sprintf "player_%d_%d" timestamp random*)
-
-(* Initialize or get player *)
-
-(*
-let get_or_create_player player_id : Player_state.player_state Lwt.t =
-  Lwt_mutex.with_lock players_mutex (fun () ->
-    match Hashtbl.find players_ref player_id with
-    | Some player ->
-        let current_time = 
-          Time_ns.now () 
-          |> Time_ns.to_span_since_epoch 
-          |> Time_ns.Span.to_int_sec
-          |> Float.of_int 
-        in
-        (* Update last active time *)
-        let updated = { player with last_active = current_time } in
-        Hashtbl.set players_ref ~key:player_id ~data:updated;
-        Lwt.return updated
-    | None ->
-        (* Create new player with initial tiles *)
-        let tiles, remaining = Game_utils.peek_random_tiles_from_bag !tile_bag_ref 21 in
-        tile_bag_ref := remaining;
-        let current_time = 
-          Time_ns.now () 
-          |> Time_ns.to_span_since_epoch 
-          |> Time_ns.Span.to_int_sec 
-          |> Float.of_int
-        in
-        let new_player: Player_state.player_state= {
-          id = player_id;
-          tiles = tiles;
-          board = [];
-          last_active = current_time;
-        } in
-        Hashtbl.set players_ref ~key:player_id ~data:new_player;
-        Printf.printf "Created new player: %s\n%!" player_id;
-        let _ = new_player.board in (*dummy to avoid build error*)
-        let _ = new_player.last_active in (*dummy to avoid build error*)
-        Lwt.return new_player
-  )
-        *)
 
 (* Join game - returns player ID *)
 let join_game : Dream.route =
@@ -119,11 +57,6 @@ let draw_tiles : Dream.route =
             |> Option.value_map ~default:3 ~f:Yojson.Basic.Util.to_int in
           
           let%lwt updated_tiles = Lwt_mutex.with_lock tile_bag_mutex (fun () ->
-            (*let%lwt player = get_or_create_player player_id in
-            let new_tiles, remaining = Game_utils.peek_random_tiles_from_bag !tile_bag_ref count in
-            Printf.printf "Player %s requested %d — returned %d tiles: %s\n%!"
-              player_id count (List.length new_tiles) (String.of_char_list new_tiles);
-            *)
             let player_opt = Hashtbl.find players_ref player_id in
             match player_opt with
             | None ->
@@ -186,8 +119,6 @@ let validate : Dream.route =
     try
       match Yojson.Basic.from_string body with 
       | `Assoc pairs ->
-          (*let player_id = List.Assoc.find_exn pairs ~equal:String.equal "playerId" 
-            |> Yojson.Basic.Util.to_string in*)
           let board_data = List.Assoc.find_exn pairs ~equal:String.equal "board" in
           
           let tiles = match board_data with
@@ -218,7 +149,7 @@ let validate : Dream.route =
                 Dream.json ~status:`Bad_Request "\"Board tiles must be connected\""
                   ~headers:[ ("Access-Control-Allow-Origin", "*") ]
               else
-                (match !dictionary_ref with
+                (match dictionary with
                 | None ->
                     Dream.json ~status:`OK "\"Valid structure\""
                       ~headers:[ ("Access-Control-Allow-Origin", "*") ]
@@ -290,22 +221,17 @@ let hint : Dream.route =
                 Dream.json ~status:`Bad_Request "\"Board is empty\""
                   ~headers:[ ("Access-Control-Allow-Origin", "*") ]
               else
-                match !solver_utils_ref with
+                let hint = Solver.calculate_hint solver_utils rack board in
+                match hint with
                 | None ->
                   Dream.json ~status:`OK "\"No hint available\""
+                  ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+                | Some h ->
+                  let message = Solver.hint_as_string h in
+                  let hint_json = `String message |> Yojson.Basic.to_string in
+                  Dream.json ~status:`OK
                     ~headers:[ ("Access-Control-Allow-Origin", "*") ]
-                | Some utils ->
-                  let hint = Solver.calculate_hint utils rack board in
-                  match hint with
-                  | None ->
-                    Dream.json ~status:`OK "\"No hint available\""
-                    ~headers:[ ("Access-Control-Allow-Origin", "*") ]
-                  | Some h ->
-                    let message = Solver.hint_as_string h in
-                    let hint_json = `String message |> Yojson.Basic.to_string in
-                    Dream.json ~status:`OK
-                      ~headers:[ ("Access-Control-Allow-Origin", "*") ]
-                      hint_json
+                    hint_json
         end
       | _ -> Dream.json ~status:`Bad_Request "\"Expected object\""
           ~headers:[ ("Access-Control-Allow-Origin", "*") ]
@@ -325,10 +251,7 @@ let cors_preflight : Dream.route =
       ""
   )
 
-let () =
-  Game_utils.load_dictionary "dictionary.txt" dictionary_ref;
-  Game_utils.load_solver "dictionary.txt" "banana-dist.txt" solver_utils_ref;
-  
+let () = 
   Dream.run ~port:8080
   @@ Dream.logger
   @@ Dream.router [

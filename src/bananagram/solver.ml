@@ -85,40 +85,42 @@ let create_letter_scores_map (distribution_filename : string) : int Utils.ScoreM
 
 (* HELPERS FOR calculate_hint *)
 
-(* check spacing to the left and right of a down-word *)
+(* check spacing to the left and right of a potential down-word *)
 let checkHorizontalSpacing (board : Banana_gram.board) (pos : Lib.Tile.Position.t) (tiles_count : int) : bool =
-  List.fold (List.init 3 ~f:(fun x -> x-1)) ~init:true ~f:(
-  (* loop -1, 0, 1 *)
-    fun ret dCol ->
-      List.fold (List.init (tiles_count * 2 + 3) ~f:(fun x -> x - tiles_count)) ~init:ret ~f:(
-      (* loop -tiles_count-1 .. tiles_count+1. Must check spacing all around tiles *)
-        fun ret dRow ->
-          let r, c = pos in
-          let currPos = Lib.Tile.Position.create (r + dRow) (c + dCol) in
-          match Banana_gram.Board.get currPos board with
+  let r, c = pos in
+  (* -tiles_count-1 .. tiles_count+1. Must check spacing all around tiles *)
+  let y_range = List.init (tiles_count * 2 + 3) ~f:(fun x -> x - tiles_count - 1) in
+  let x_range = [-1; 0; 1] in
+  List.fold x_range ~init:true ~f:(
+    fun ret d_col ->
+      List.fold y_range ~init:ret ~f:(
+        fun ret d_row ->
+          let curr_pos = Lib.Tile.Position.create (r + d_row) (c + d_col) in
+          match Banana_gram.Board.get curr_pos board with
           | None -> ret (* if nothing there, then no worries. good. *)
           | Some _ -> 
-            if dCol = 0 then
+            if d_row = 0 then
               ret (* don't care about tiles in row of origin tile as no new tiles can interfere *)
             else
               false (* if there's a tile in the spacing around where the new word should go, propagate false as ret. *)
         )
     )
 
-(* check spacing to the up and down of an across-word *)
+(* check spacing above and below a potential across-word *)
 let checkVerticalSpacing (board : Banana_gram.board) (pos : Lib.Tile.Position.t) (tiles_count : int) : bool =
-  List.fold (List.init 3 ~f:(fun x -> x-1)) ~init:true ~f:(
-  (* loop -1, 0, 1 *)
-    fun ret dRow ->
-      List.fold (List.init (tiles_count * 2 + 3) ~f:(fun x -> x - tiles_count)) ~init:ret ~f:(
-      (* loop -tiles_count-1 .. tiles_count+1. Must check spacing all around tiles *)
-        fun ret dCol ->
-          let r, c = pos in
-          let currPos = Lib.Tile.Position.create (r + dRow) (c + dCol) in
-          match Banana_gram.Board.get currPos board with
+  let r, c = pos in
+  (* -tiles_count-1 .. tiles_count+1. Must check spacing all around tiles *)
+  let x_range = List.init (tiles_count * 2 + 3) ~f:(fun x -> x - tiles_count - 1) in
+  let y_range = [-1; 0; 1] in
+  List.fold y_range ~init:true ~f:(
+    fun ret d_row ->
+      List.fold x_range ~init:ret ~f:(
+        fun ret d_col ->
+          let curr_pos = Lib.Tile.Position.create (r + d_row) (c + d_col) in
+          match Banana_gram.Board.get curr_pos board with
           | None -> ret (* if nothing there, then no worries. good. *)
           | Some _ -> 
-            if dRow = 0 then
+            if d_col = 0 then
               ret (* don't care about tiles in col of origin tile as no new tiles can interfere *)
             else
               false (* if there's a tile in the spacing around where the new word should go, propagate false as ret. *)
@@ -156,9 +158,7 @@ let get_heuristics (utils : Utils.t) (word : Banana_gram.Tile.Value.t list) (see
   let used_letters = 
     let rec remove_one tile lst =
       match lst with
-      | [] ->
-        printf "\nword:%s\nseed:%s" (String.of_char_list word) (String.of_char_list seed);
-        failwith "[ERROR] >> word doesn't contain seed somehow?"
+      | [] -> failwith "[ERROR] >> word doesn't contain seed somehow?"
       | hd :: tl ->
         if Banana_gram.Tile.Value.equal hd tile then tl
         else hd :: remove_one tile tl

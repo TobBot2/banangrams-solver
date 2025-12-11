@@ -386,6 +386,7 @@ let test_solver_utils _ =
 
   let test_dist = "hint_test_dist.txt" in
   let oc_dist = Out_channel.create test_dist in
+  (* word distribution *)
   Out_channel.output_string oc_dist "13\n3\n3\n6\n18\n3\n4\n3\n12\n2\n2\n5\n3\n8\n11\n3\n2\n9\n6\n9\n6\n3\n3\n2\n3\n2\n";
   Out_channel.close oc_dist;
 
@@ -422,11 +423,43 @@ let test_solver_hint _ =
   let hint = Solver.calculate_hint utils rack board in
   let hint_msg =
     match hint with
-    | None -> "No hint available"
+    | None -> assert_failure "Solver didn't find hint"
     | Some h -> Solver.hint_as_string h in
 
-  assert_equal "You should play TOT going down at (5,2)" hint_msg
+  assert_bool "Solver found invalid hint." (String.is_substring hint_msg ~substring:"going across") 
 
+let test_solver_hint_prefer_longer_words _ =
+  let test_dict = "hint_test_dict.txt" in
+  let oc_dict = Out_channel.create test_dict in
+  Out_channel.output_string oc_dict "WHAT\nOW\nHOT\n";
+  Out_channel.close oc_dict;
+
+  let test_dist = "hint_test_dist.txt" in
+  let oc_dist = Out_channel.create test_dist in
+  Out_channel.output_string oc_dist "13\n3\n3\n6\n18\n3\n4\n3\n12\n2\n2\n5\n3\n8\n11\n3\n2\n9\n6\n9\n6\n3\n3\n2\n3\n2\n";
+  Out_channel.close oc_dist;
+
+  let utils = Solver.set_up_utils test_dict test_dist in
+
+  let board = Banana_gram.Board.empty in
+  let tile_w = Banana_gram.Tile.create (Lib.Tile.Position.create 5 5) 'W' in
+  let tile_h = Banana_gram.Tile.create (Lib.Tile.Position.create 5 4) 'H' in
+  let tile_a = Banana_gram.Tile.create (Lib.Tile.Position.create 5 3) 'A' in
+  let tile_t = Banana_gram.Tile.create (Lib.Tile.Position.create 5 2) 'T' in
+  let board = Banana_gram.Board.set tile_w board in
+  let board = Banana_gram.Board.set tile_h board in
+  let board = Banana_gram.Board.set tile_a board in
+  let board = Banana_gram.Board.set tile_t board in
+
+  let rack = [ 'T'; 'O'; ] in
+
+  let hint = Solver.calculate_hint utils rack board in
+  let hint_msg =
+    match hint with
+    | None -> assert_failure "Solver didn't find hint"
+    | Some h -> Solver.hint_as_string h in
+
+  assert_equal "You should play HOT going across at (5,4)" hint_msg
 
 (*Bananagram tests*)
 let test_place_word_on_board _ =
@@ -532,7 +565,8 @@ let validation_tests = "Validation tests" >::: [
 
 let solver_tests = "Solver tests" >::: [
   "hint utils" >:: test_solver_utils;
-  "hint message" >:: test_solver_hint;
+  "hint base message" >:: test_solver_hint;
+  "hint prefer long" >:: test_solver_hint_prefer_longer_words;
 ]
 
 let bananagram_tests = "Bananagram tests" >::: [
