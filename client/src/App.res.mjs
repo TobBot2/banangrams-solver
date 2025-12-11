@@ -165,13 +165,67 @@ function App(props) {
               return ;
             }
           };
+          var pollPeelState = async function () {
+            if (playerId !== undefined) {
+              try {
+                var payload = {};
+                payload["playerId"] = playerId;
+                var json_data = JSON.stringify(payload);
+                var options = {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json"
+                  },
+                  body: json_data
+                };
+                var response = await fetch("http://localhost:8080/peel_state", options);
+                var json = await response.json();
+                var arr = Js_json.decodeArray(json);
+                if (arr === undefined) {
+                  return ;
+                }
+                var newTiles = Core__Array.filterMap(arr, Js_json.decodeString);
+                return setLetters(function (prevLetters) {
+                            var maxId = Core__Array.reduce(prevLetters.map(function (param) {
+                                      var n = Core__Int.fromString(param[1], undefined);
+                                      if (n !== undefined) {
+                                        return n;
+                                      } else {
+                                        return 0;
+                                      }
+                                    }), 0, (function (acc, n) {
+                                    if (acc > n) {
+                                      return acc;
+                                    } else {
+                                      return n;
+                                    }
+                                  }));
+                            var newTilesWithIds = newTiles.map(function (letter, idx) {
+                                  return [
+                                          letter,
+                                          ((maxId + idx | 0) + 1 | 0).toString()
+                                        ];
+                                });
+                            return prevLetters.concat(newTilesWithIds);
+                          });
+              }
+              catch (exn){
+                console.log("Failed to fetch peel state");
+                return ;
+              }
+            } else {
+              console.log("No player ID");
+              return ;
+            }
+          };
           var intervalId = setInterval((function () {
                   pollGameState();
+                  pollPeelState();
                 }), 2000);
           return (function () {
                     clearInterval(intervalId);
                   });
-        }), []);
+        }), [playerId]);
   var buildBoardMap = function (grid) {
     return Core__Array.reduce(Core__Array.filterMap(grid.map(function (item, index) {
                         if (item === undefined) {

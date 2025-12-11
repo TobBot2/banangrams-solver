@@ -111,7 +111,7 @@ let make = () => {
   })
 
   // Poll for game state updates every 2 seconds
-React.useEffect0(() => {
+React.useEffect1(() => {
   let pollGameState = async () => {
     try {
       let response = await fetch("http://localhost:8080/game_state")
@@ -134,16 +134,69 @@ React.useEffect0(() => {
     | _ => Console.log("Failed to fetch game state")
     }
   }
+
+  let pollPeelState = async () => {
+    switch playerId {
+      | None => Console.log("No player ID")
+      | Some(id) => {
+        try {
+          let payload = Js.Dict.empty()
+          Js.Dict.set(payload, "playerId", JSON.Encode.string(id))
+          
+          let json_data = payload->JSON.Encode.object->JSON.stringify
+          
+          let options = {
+            "method": "POST",
+            "headers": {"Content-Type": "application/json"},
+            "body": json_data
+          }
+          
+          let response = await fetchOptions("http://localhost:8080/peel_state", options)
+          let json = await response->json
+          
+          switch json->Js.Json.decodeArray {
+          | Some(arr) => {
+              let newTiles = arr->Array.filterMap(item => Js.Json.decodeString(item))
+              setLetters(prevLetters => {
+                // get current max id
+                let maxId = prevLetters
+                  ->Array.map(((_, id)) => {
+                    switch Int.fromString(id) {
+                    | Some(n) => n
+                    | None => 0
+                    }
+                  })
+                  ->Array.reduce(0, (acc, n) => max(acc, n))
+                
+                // add current max id so ids don't collide
+                let newTilesWithIds = newTiles->Array.mapWithIndex((letter, idx) => 
+                  (letter, Int.toString(maxId + idx + 1))
+                )
+                
+                // add new tiles to pre-existing letters
+                Array.concat(prevLetters, newTilesWithIds)
+              })
+            }
+          | None => ()
+          }
+          
+        } catch {
+          | _ => Console.log("Failed to fetch peel state")
+        }
+      }
+    }
+  }
   
   // Poll every 2 seconds
   let intervalId = Js.Global.setInterval(() => {
     pollGameState()->ignore
+    pollPeelState()->ignore
   }, 2000)
 
   
   // Cleanup
   Some(() => Js.Global.clearInterval(intervalId))
-})
+}, [playerId])
 
 let buildBoardMap = grid =>
   grid
