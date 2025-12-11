@@ -233,81 +233,19 @@ let handleValidate = async () => {
 
         let status = response["status"]
         if status >= 200 && status < 300 {
-          alert("✓ Board is valid!")
+          alert("Board is valid!")
         } else {
           switch json->JSON.Decode.string {
-          | Some(msg) => alert("✗ " ++ msg)
-          | None => alert("✗ Validation failed")
+          | Some(msg) => alert("Error >> " ++ msg)
+          | None => alert("Validation failed")
           }
         }
       } catch {
-      | _ => alert("✗ Failed to validate board")
+      | _ => alert("Failed to validate board")
       }
     }
   }
 }
-
-/*let handleValidate = () => {
-  sendBoardToServer(grid)->ignore
-}*/
-
-/*
-  let sendBoardToServer = async grid => {
-    switch playerId {
-    | None => alert("Not connected to game")
-    | Some(id) => {
-        try {
-          let boardMap = grid
-            ->Array.mapWithIndex((item, index) => {
-              switch item {
-              | Some((letter, _id)) => {
-                  let (x, y) = indexToCoord(index)
-                  let key = Int.toString(x) ++ "," ++ Int.toString(y)
-                  Some((key, letter))
-                }
-              | None => None
-              }
-            })
-            ->Array.filterMap(x => x)
-            ->Array.reduce(Js.Dict.empty(), (dict, (key, letter)) => {
-              Js.Dict.set(dict, key, JSON.Encode.string(letter))
-              dict
-            })
-          
-          let payload = Js.Dict.empty()
-          Js.Dict.set(payload, "playerId", JSON.Encode.string(id))
-          Js.Dict.set(payload, "board", JSON.Encode.object(boardMap))
-          
-          let json_data = payload->JSON.Encode.object->JSON.stringify
-          
-          let options = {
-            "method": "POST",
-            "headers": {"Content-Type": "application/json"},
-            "body": json_data
-          }
-          
-          let response = await fetchOptions("http://localhost:8080/validate", options)
-          let json = await response->json
-
-          let status = response["status"]
-          if status >= 200 && status < 300 {
-            alert("✓ Board is valid!")
-          } else {
-            switch json->JSON.Decode.string {
-            | Some(msg) => alert("✗ " ++ msg)
-            | None => alert("✗ Validation failed")
-            }
-          }
-        } catch {
-        | _ => alert("✗ Failed to validate board")
-        }
-      }
-    }
-  }
-
-  let handleValidate = () => {
-    sendBoardToServer(grid)->ignore
-  }*/
 
   let fetchMoreTiles = async () => {
   switch playerId {
@@ -382,64 +320,6 @@ let handleValidate = async () => {
   }
 }
 
-/*
-  let handleHint = async () => {
-  switch playerId {
-  | None => alert("Not connected to game")
-  | Some(id) => {
-      try {
-        // Build board map from grid (same as validation)
-        let boardMap = grid
-          ->Array.mapWithIndex((item, index) => {
-            switch item {
-            | Some((letter, _id)) => {
-                let (x, y) = indexToCoord(index)
-                let key = Int.toString(x) ++ "," ++ Int.toString(y)
-                Some((key, letter))
-              }
-            | None => None
-            }
-          })
-          ->Array.filterMap(x => x)
-          ->Array.reduce(Js.Dict.empty(), (dict, (key, letter)) => {
-            Js.Dict.set(dict, key, JSON.Encode.string(letter))
-            dict
-          })
-        
-        // Build rack from letters
-        let rack = letters->Array.map(((letter, _id)) => JSON.Encode.string(letter))
-        
-        let payload = Js.Dict.empty()
-        Js.Dict.set(payload, "playerId", JSON.Encode.string(id))
-        Js.Dict.set(payload, "board", JSON.Encode.object(boardMap))
-        Js.Dict.set(payload, "rack", JSON.Encode.array(rack))
-        
-        let json_data = payload->JSON.Encode.object->JSON.stringify
-        
-        let options = {
-          "method": "POST",
-          "headers": {"Content-Type": "application/json"},
-          "body": json_data
-        }
-        
-        let response = await fetchOptions("http://localhost:8080/hint", options)
-        let json = await response->json
-        
-        let word = switch json->JSON.Decode.string {
-        | Some(w) => w
-        | None => ""
-        }
-        
-        setHintWord(_ => Some(word))
-      } catch {
-      | _ => {
-          Console.log("Failed to fetch hint")
-          setHintWord(_ => None)
-        }
-      }
-    }
-  }
-}*/
   let handleDragStart = tileWithId => e => {
     setDragged(_ => Some(tileWithId))
   }

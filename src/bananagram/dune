@@ -2,4 +2,4 @@
  (name bananagram)
  (libraries lib core lwt)
  (modules :standard)
- (preprocess (pps ppx_jane bisect_pp)))
+ (preprocess (pps ppx_jane bisect_ppx)))

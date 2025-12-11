@@ -251,19 +251,19 @@ function App(props) {
         var json = await response.json();
         var status = response.status;
         if (status >= 200 && status < 300) {
-          window.alert("✓ Board is valid!");
+          window.alert("Board is valid!");
           return ;
         }
         var msg = Core__JSON.Decode.string(json);
         if (msg !== undefined) {
-          window.alert("✗ " + msg);
+          window.alert("Error >> " + msg);
         } else {
-          window.alert("✗ Validation failed");
+          window.alert("Validation failed");
         }
         return ;
       }
       catch (exn){
-        window.alert("✗ Failed to validate board");
+        window.alert("Failed to validate board");
         return ;
       }
     } else {
