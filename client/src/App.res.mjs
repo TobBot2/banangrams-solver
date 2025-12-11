@@ -241,20 +241,56 @@ function App(props) {
     }
   };
   var handleHint = async function () {
-    try {
-      var response = await fetch("http://localhost:8080/hint");
-      var json = await response.json();
-      var w = Core__JSON.Decode.string(json);
-      var word = w !== undefined ? w : "";
-      return setHintWord(function (param) {
-                  return word;
-                });
-    }
-    catch (exn){
-      console.log("Failed to fetch hint");
-      return setHintWord(function (param) {
-                  
-                });
+    if (playerId !== undefined) {
+      try {
+        var boardMap = Core__Array.reduce(Core__Array.filterMap(grid.map(function (item, index) {
+                      if (item === undefined) {
+                        return ;
+                      }
+                      var match = indexToCoord(index);
+                      var key = match[0].toString() + "," + match[1].toString();
+                      return [
+                              key,
+                              item[0]
+                            ];
+                    }), (function (x) {
+                    return x;
+                  })), {}, (function (dict, param) {
+                dict[param[0]] = param[1];
+                return dict;
+              }));
+        var rack = letters.map(function (param) {
+              return param[0];
+            });
+        var payload = {};
+        payload["playerId"] = playerId;
+        payload["board"] = boardMap;
+        payload["rack"] = rack;
+        var json_data = JSON.stringify(payload);
+        var options = {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: json_data
+        };
+        var response = await fetch("http://localhost:8080/hint", options);
+        var json = await response.json();
+        var w = Core__JSON.Decode.string(json);
+        var word = w !== undefined ? w : "";
+        return setHintWord(function (param) {
+                    return word;
+                  });
+      }
+      catch (exn){
+        console.log("Failed to fetch hint");
+        return setHintWord(function (param) {
+                    
+                  });
+      }
+    } else {
+      window.alert("Not connected to game");
+      return ;
     }
   };
   var handleDrop = function (index) {

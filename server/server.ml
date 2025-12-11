@@ -134,7 +134,7 @@ let join_game : Dream.route =
   )
 
 (* Get player tiles *)
-let get_tiles : Dream.route =
+(*let get_tiles : Dream.route =
   Dream.get "/get_tiles" (fun request ->
     match Dream.query request "playerId" with
     | None -> Dream.json ~status:`Bad_Request "\"Missing playerId\""
@@ -151,6 +151,7 @@ let get_tiles : Dream.route =
           ~headers:[ ("Access-Control-Allow-Origin", "*") ]
           tiles_json
   )
+*)
 
 (* Draw more tiles for a specific player *)
 let draw_tiles : Dream.route =
@@ -166,11 +167,20 @@ let draw_tiles : Dream.route =
             |> Option.value_map ~default:3 ~f:Yojson.Basic.Util.to_int in
           
           let%lwt updated_tiles = Lwt_mutex.with_lock tile_bag_mutex (fun () ->
-            let%lwt player = get_or_create_player player_id in
+            (*let%lwt player = get_or_create_player player_id in
             let new_tiles, remaining = Game_utils.peek_random_tiles_from_bag !tile_bag_ref count in
             Printf.printf "Player %s requested %d — returned %d tiles: %s\n%!"
               player_id count (List.length new_tiles) (String.of_char_list new_tiles);
-            
+            *)
+            let player_opt = Hashtbl.find players_ref player_id in
+            match player_opt with
+            | None ->
+                Lwt.return_error "Player not found"
+            | Some player ->
+                let new_tiles, remaining = Game_utils.peek_random_tiles_from_bag !tile_bag_ref count in
+                Printf.printf "Player %s requested %d — returned %d tiles: %s\n%!"
+                  player_id count (List.length new_tiles) (String.of_char_list new_tiles);
+                
               (*tile_bag_ref := List.filter !tile_bag_ref ~f:(fun tile -> 
               not (List.mem new_tiles tile ~equal:Char.equal)*)
               tile_bag_ref := remaining
@@ -182,23 +192,30 @@ let draw_tiles : Dream.route =
             let updated_player = { player with tiles = all_tiles } in
             Hashtbl.set players_ref ~key:player_id ~data:updated_player;
             
-            Lwt.return all_tiles
+            Lwt.return_ok all_tiles
           ) in
-          
-          let response = `Assoc [
-            ("tiles", `List (List.map updated_tiles ~f:(fun c -> `String (String.make 1 c))));
-            ("tilesRemaining", `Int (List.length !tile_bag_ref));
-          ] |> Yojson.Basic.to_string in
-          
-          Dream.json ~status:`OK
-            ~headers:[ ("Access-Control-Allow-Origin", "*") ]
-            response
+                    (match updated_tiles with
+          | Ok tiles ->
+              let response = `Assoc [
+                ("tiles", `List (List.map tiles ~f:(fun c -> `String (String.make 1 c))));
+                ("tilesRemaining", `Int (List.length !tile_bag_ref));
+              ] |> Yojson.Basic.to_string in
+              
+              Dream.json ~status:`OK
+                ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+                response
+          | Error msg ->
+              Dream.json ~status:`Bad_Request 
+                (sprintf "\"%s\"" msg)
+                ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+          )
       | _ -> Dream.json ~status:`Bad_Request "\"Invalid request\""
           ~headers:[ ("Access-Control-Allow-Origin", "*") ]
     with _ ->
       Dream.json ~status:`Bad_Request "\"Invalid JSON\""
         ~headers:[ ("Access-Control-Allow-Origin", "*") ]
   )
+
 
 (* Validate board for specific player *)
 let validate : Dream.route =
@@ -266,7 +283,7 @@ let validate : Dream.route =
   )
 
 let hint : Dream.route =
-  Dream.get "/hint" (fun request ->
+  Dream.post "/hint" (fun request ->
     let%lwt body = Dream.body request in
     try
       match Yojson.Basic.from_string body with 
@@ -357,7 +374,7 @@ let () =
          Dream.html "Bananagrams 2-player server is running!");
        cors_preflight;
        join_game;
-       get_tiles;
+       (*get_tiles;*)
        draw_tiles;
        hint;
        validate;
