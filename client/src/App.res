@@ -8,7 +8,7 @@ type response
 @react.component
 let make = () => {
   let gridRows = 31
-  let gridCols = 21
+  let gridCols = 31
   
   let (playerId, setPlayerId) = React.useState(() => None)
   let (letters, setLetters) = React.useState(() => [])
@@ -468,18 +468,25 @@ React.useEffect0(() => {
 
       <h2 className="text-2xl font-bold mb-4"> {"Grid"->React.string} </h2>
       <div className="inline-block border border-gray-400">
-        <div style={ReactDOM.Style.make(~display="grid", ~gridTemplateColumns="repeat(21, 2rem)", ())}>
+        <div style={ReactDOM.Style.make(~display="grid", ~gridTemplateColumns="repeat(31, 2rem)", ())}>
           {grid
             ->Array.mapWithIndex((item, index) => {
               let centerIndex = (gridRows * gridCols) / 2
               let isCenter = index === centerIndex
               let bgColor = isCenter ? "bg-blue-200" : "bg-white"
+              let (x, y) = indexToCoord(index)
+              let showLabel = x === 0 || y === 0
               <div
                 key={Int.toString(index)}
                 onDrop={handleDrop(index)}
                 onDragOver={handleDragOver}
-                className={("w-8 h-8 border border-gray-300 flex items-center justify-center hover:bg-gray-50 " ++ bgColor )}
+                className={("relative w-8 h-8 border border-gray-300 flex items-center justify-center hover:bg-gray-50 " ++ bgColor )}
               >
+                 //{showLabel ? 
+                 // <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 font-semibold pointer-events-none">
+                 //   {React.string(x === 0 ? Int.toString(y) : Int.toString(x))}
+                 // </div>
+                //: React.null}
                 {switch item {
                 | Some(item) => {
                     let (actual_letter, id) = item
@@ -491,7 +498,12 @@ React.useEffect0(() => {
                       {React.string(actual_letter)}
                     </div>
                   }
-                | None => React.null
+                | None => //React.null
+                {showLabel ? 
+                  <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 font-semibold pointer-events-none">
+                    {React.string(x === 0 ? Int.toString(y) : Int.toString(x))}
+                  </div>
+                : React.null}
                 }}
               </div>
             })

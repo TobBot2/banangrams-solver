@@ -1,5 +1,5 @@
 (library
  (name bananagram)
- (libraries lib core)
+ (libraries lib core lwt)
  (modules :standard)
  (preprocess (pps ppx_jane bisect_ppx)))

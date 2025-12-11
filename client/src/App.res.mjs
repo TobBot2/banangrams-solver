@@ -27,7 +27,7 @@ function App(props) {
   var setDragged = match$2[1];
   var dragged = match$2[0];
   var match$3 = React.useState(function () {
-        return Core__Array.make(651, undefined);
+        return Core__Array.make(961, undefined);
       });
   var setGrid = match$3[1];
   var grid = match$3[0];
@@ -47,10 +47,10 @@ function App(props) {
   var tilesRemaining = match$6[0];
   var joinInitiated = React.useRef(false);
   var indexToCoord = function (index) {
-    var row = index / 21 | 0;
-    var col = index % 21;
+    var row = index / 31 | 0;
+    var col = index % 31;
     var centerRow = 15;
-    var centerCol = 10;
+    var centerCol = 15;
     var x = col - centerCol | 0;
     var y = centerRow - row | 0;
     return [
@@ -489,9 +489,13 @@ function App(props) {
                   JsxRuntime.jsx("div", {
                         children: JsxRuntime.jsx("div", {
                               children: grid.map(function (item, index) {
-                                    var centerIndex = 325;
+                                    var centerIndex = 480;
                                     var isCenter = index === centerIndex;
                                     var bgColor = isCenter ? "bg-blue-200" : "bg-white";
+                                    var match = indexToCoord(index);
+                                    var y = match[1];
+                                    var x = match[0];
+                                    var showLabel = x === 0 || y === 0;
                                     return JsxRuntime.jsx("div", {
                                                 children: item !== undefined ? JsxRuntime.jsx("div", {
                                                         children: item[0],
@@ -512,15 +516,20 @@ function App(props) {
                                                                               ]]);
                                                                 });
                                                           })
-                                                      }) : null,
-                                                className: "w-8 h-8 border border-gray-300 flex items-center justify-center hover:bg-gray-50 " + bgColor,
+                                                      }) : (
+                                                    showLabel ? JsxRuntime.jsx("div", {
+                                                            children: x === 0 ? y.toString() : x.toString(),
+                                                            className: "absolute inset-0 flex items-center justify-center text-xs text-gray-400 font-semibold pointer-events-none"
+                                                          }) : null
+                                                  ),
+                                                className: "relative w-8 h-8 border border-gray-300 flex items-center justify-center hover:bg-gray-50 " + bgColor,
                                                 onDragOver: handleDragOver,
                                                 onDrop: handleDrop(index)
                                               }, index.toString());
                                   }),
                               style: {
                                 display: "grid",
-                                gridTemplateColumns: "repeat(21, 2rem)"
+                                gridTemplateColumns: "repeat(31, 2rem)"
                               }
                             }),
                         className: "inline-block border border-gray-400"
