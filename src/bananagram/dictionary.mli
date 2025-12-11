@@ -1,7 +1,5 @@
 open Core
 
-(** Dictionary module for word validation *)
-
 (** Dictionary type - a set of valid words *)
 type t = String.Set.t [@@deriving sexp, compare]
 
@@ -16,9 +14,3 @@ val contains : t -> string -> bool
 
 val empty : t
 (** [empty] creates an empty dictionary *)
-
-val of_list : string list -> t
-(** [of_list words] creates a dictionary from a list of words *)
-
-val size : t -> int
-(** [size dict] returns the number of words in the dictionary *)

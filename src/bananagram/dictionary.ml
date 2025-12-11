@@ -18,10 +18,3 @@ let contains dict word =
   Set.mem dict (String.uppercase word)
 
 let empty = String.Set.empty
-
-let of_list words =
-  List.map words ~f:String.uppercase
-  |> String.Set.of_list
-
-let size dict =
-  Set.length dict

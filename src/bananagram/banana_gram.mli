@@ -89,11 +89,5 @@ val create_word : position -> char list -> word
 val empty_board : unit -> board
 (** [empty_board ()] creates an empty board *)
 
-val place_word_on_board : word -> board -> board
-(** [place_word_on_board word board] places all tiles from word onto board *)
-
 val get_letter_at : position -> board -> char option
 (** [get_letter_at pos board] returns the letter at position, if any *)
-
-val word_to_string : word -> string
-(** [word_to_string word] converts word to string representation *)

@@ -58,13 +58,6 @@ let create_word (start : position) (letters : char list) : word =
 let empty_board () : board =
   Board.empty
 
-let place_word_on_board (word : word) (board : board) : board =
-  List.fold (Word.tiles word) ~init:board ~f:(fun b tile ->
-    Board.set tile b
-  )
-
 let get_letter_at (pos : position) (board : board) : char option =
   Board.get pos board
-
-let word_to_string (word : word) : string =
-  Word.to_string word
+ 
