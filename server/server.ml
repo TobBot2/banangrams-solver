@@ -14,41 +14,11 @@ type player_state = {
 let players_ref : (string, player_state) Hashtbl.t = Hashtbl.create (module String)
 let players_mutex = Lwt_mutex.create ()
 
-(*let read_letter_list filename : char list =
-  let ic = In_channel.create filename in
-  let rec read_lines acc =
-    match In_channel.input_line ic with
-    | Some line ->
-        let parts = String.split_on_chars line ~on:['#'] in
-        (match parts with
-        | count_str :: letter_str :: _ ->
-            let count = int_of_string (String.strip count_str) in
-            let letter = String.strip letter_str |> fun s -> s.[0] in
-            let letters = List.init count ~f:(fun _ -> letter) in
-            read_lines (letters @ acc)
-        | _ -> read_lines acc)
-    | None ->
-        In_channel.close ic;
-        Printf.printf "Returning %d tiles in dict\n%!" (List.length acc);
-        List.rev acc
-  in
-  read_lines []*)
+
 
 let dictionary_ref : Dictionary.t option ref = ref None
 
 let solver_utils_ref : Solver.Utils.t option ref = ref None
-
-(*let load_dictionary filepath dictionary_ref=
-  match Validation.Dictionary.load filepath with
-  | Ok dict -> 
-      dictionary_ref := Some dict;
-      Printf.printf "Dictionary loaded from %s\n%!" filepath
-  | Error err ->
-      Printf.printf "Failed to load dictionary: %s\n%!" err
-
-let load_solver dict_filepath dist_filepath solver_utils_ref=
-  solver_utils_ref := Some (Solver.set_up_utils dict_filepath dist_filepath);
-  Printf.printf "Solver loaded from \n  dictionary: %s\n  distribution: %s\n%!" dict_filepath dist_filepath*)
 
 let initial_tile_bag : char list = Game_utils.read_letter_list "banana-dist.txt"
 let tile_bag_ref = ref initial_tile_bag
@@ -64,6 +34,9 @@ let tile_bag_mutex = Lwt_mutex.create ()
    (*let result = List.sub shuffled ~pos:0 ~len:actual_count in*)
     Printf.printf "Returning %d tiles\n%!" (List.length result);
     (result, remaining)*)
+
+
+
 
 (* Generate unique player ID *)
 let generate_player_id () =
@@ -133,25 +106,7 @@ let join_game : Dream.route =
       response
   )
 
-(* Get player tiles *)
-(*let get_tiles : Dream.route =
-  Dream.get "/get_tiles" (fun request ->
-    match Dream.query request "playerId" with
-    | None -> Dream.json ~status:`Bad_Request "\"Missing playerId\""
-        ~headers:[ ("Access-Control-Allow-Origin", "*") ]
-    | Some player_id ->
-        let%lwt player = get_or_create_player player_id in
-        let tiles_json = 
-          player.tiles
-          |> List.map ~f:(fun c -> `String (String.make 1 c))
-          |> fun lst -> `List lst
-          |> Yojson.Basic.to_string
-        in
-        Dream.json ~status:`OK
-          ~headers:[ ("Access-Control-Allow-Origin", "*") ]
-          tiles_json
-  )
-*)
+
 
 (* Draw more tiles for a specific player *)
 let draw_tiles : Dream.route =
@@ -214,6 +169,18 @@ let draw_tiles : Dream.route =
     with _ ->
       Dream.json ~status:`Bad_Request "\"Invalid JSON\""
         ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+  )
+
+(* Get current game state - tiles remaining *)
+let game_state : Dream.route =
+  Dream.get "/game_state" (fun _ ->
+    let response = `Assoc [
+      ("tilesRemaining", `Int (List.length !tile_bag_ref));
+    ] |> Yojson.Basic.to_string in
+    
+    Dream.json ~status:`OK
+      ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+      response
   )
 
 
@@ -374,12 +341,63 @@ let () =
          Dream.html "Bananagrams 2-player server is running!");
        cors_preflight;
        join_game;
-       (*get_tiles;*)
+       game_state;
        draw_tiles;
        hint;
        validate;
      ]
 
+(*let load_dictionary filepath dictionary_ref=
+  match Validation.Dictionary.load filepath with
+  | Ok dict -> 
+      dictionary_ref := Some dict;
+      Printf.printf "Dictionary loaded from %s\n%!" filepath
+  | Error err ->
+      Printf.printf "Failed to load dictionary: %s\n%!" err
+
+let load_solver dict_filepath dist_filepath solver_utils_ref=
+  solver_utils_ref := Some (Solver.set_up_utils dict_filepath dist_filepath);
+  Printf.printf "Solver loaded from \n  dictionary: %s\n  distribution: %s\n%!" dict_filepath dist_filepath*)
+
+(* Get player tiles *)
+(*let get_tiles : Dream.route =
+  Dream.get "/get_tiles" (fun request ->
+    match Dream.query request "playerId" with
+    | None -> Dream.json ~status:`Bad_Request "\"Missing playerId\""
+        ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+    | Some player_id ->
+        let%lwt player = get_or_create_player player_id in
+        let tiles_json = 
+          player.tiles
+          |> List.map ~f:(fun c -> `String (String.make 1 c))
+          |> fun lst -> `List lst
+          |> Yojson.Basic.to_string
+        in
+        Dream.json ~status:`OK
+          ~headers:[ ("Access-Control-Allow-Origin", "*") ]
+          tiles_json
+  )
+*)
+
+(*let read_letter_list filename : char list =
+  let ic = In_channel.create filename in
+  let rec read_lines acc =
+    match In_channel.input_line ic with
+    | Some line ->
+        let parts = String.split_on_chars line ~on:['#'] in
+        (match parts with
+        | count_str :: letter_str :: _ ->
+            let count = int_of_string (String.strip count_str) in
+            let letter = String.strip letter_str |> fun s -> s.[0] in
+            let letters = List.init count ~f:(fun _ -> letter) in
+            read_lines (letters @ acc)
+        | _ -> read_lines acc)
+    | None ->
+        In_channel.close ic;
+        Printf.printf "Returning %d tiles in dict\n%!" (List.length acc);
+        List.rev acc
+  in
+  read_lines []*)
 
 (*open Core
 open Lib

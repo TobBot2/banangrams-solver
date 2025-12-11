@@ -21,6 +21,9 @@ let make = () => {
   let (hintWord, setHintWord) = React.useState(() => None)
   let (tilesRemaining, setTilesRemaining) = React.useState(() => 0)
 
+  // Use ref because it updates synchronously, unlike state
+  let joinInitiated = React.useRef(false)
+
   let indexToCoord = index => {
     let row = index / gridCols
     let col = mod(index, gridCols)
@@ -33,6 +36,8 @@ let make = () => {
 
   // Join game on mount
   React.useEffect0(() => {
+    if !joinInitiated.current {
+      joinInitiated.current = true 
     let joinGame = async () => {
   try {
     let options = {
@@ -82,24 +87,62 @@ let make = () => {
         | None => {
             Console.log("Missing playerId in response")
             setLoading(_ => false)
+            joinInitiated.current = false
           }
         }
       }
     | None => {
         Console.log("Failed to decode JSON object")
         setLoading(_ => false)
+        joinInitiated.current = false
       }
     }
   } catch {
   | exn => {
       Console.log2("Failed to join game:", exn)
       setLoading(_ => false)
+      joinInitiated.current = false
     }
   }
 }
   joinGame()->ignore  // Call the async function and ignore the promise
-  None  // Return None for cleanup
+    }
+    None  // Return None for cleanup
   })
+
+  // Poll for game state updates every 2 seconds
+React.useEffect0(() => {
+  let pollGameState = async () => {
+    try {
+      let response = await fetch("http://localhost:8080/game_state")
+      let json = await response->json
+      
+      switch json->Js.Json.decodeObject {
+      | Some(obj) => {
+          let remaining = switch obj->Js.Dict.get("tilesRemaining") {
+          | Some(val) => switch val->Js.Json.decodeNumber {
+            | Some(n) => Float.toInt(n)
+            | None => tilesRemaining  // Keep current value on error
+            }
+          | None => tilesRemaining
+          }
+          setTilesRemaining(_ => remaining)
+        }
+      | None => ()
+      }
+    } catch {
+    | _ => Console.log("Failed to fetch game state")
+    }
+  }
+  
+  // Poll every 2 seconds
+  let intervalId = Js.Global.setInterval(() => {
+    pollGameState()->ignore
+  }, 2000)
+  
+  // Cleanup
+  Some(() => Js.Global.clearInterval(intervalId))
+})
 
   let sendBoardToServer = async grid => {
     switch playerId {

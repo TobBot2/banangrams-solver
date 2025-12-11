@@ -43,6 +43,8 @@ function App(props) {
         return 0;
       });
   var setTilesRemaining = match$6[1];
+  var tilesRemaining = match$6[0];
+  var joinInitiated = React.useRef(false);
   var indexToCoord = function (index) {
     var row = index / 21 | 0;
     var col = index % 21;
@@ -56,75 +58,118 @@ function App(props) {
           ];
   };
   React.useEffect((function () {
-          var joinGame = async function () {
-            try {
-              var options = {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json"
+          if (!joinInitiated.current) {
+            joinInitiated.current = true;
+            var joinGame = async function () {
+              try {
+                var options = {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json"
+                  }
+                };
+                var response = await fetch("http://localhost:8080/join", options);
+                var json = await response.json();
+                var obj = Js_json.decodeObject(json);
+                if (obj !== undefined) {
+                  var val = Js_dict.get(obj, "playerId");
+                  var playerId = val !== undefined ? Js_json.decodeString(val) : undefined;
+                  var val$1 = Js_dict.get(obj, "tiles");
+                  var tiles;
+                  if (val$1 !== undefined) {
+                    var arr = Js_json.decodeArray(val$1);
+                    tiles = arr !== undefined ? Core__Array.filterMap(arr, Js_json.decodeString) : [];
+                  } else {
+                    tiles = [];
+                  }
+                  var val$2 = Js_dict.get(obj, "tilesRemaining");
+                  var remaining;
+                  if (val$2 !== undefined) {
+                    var n = Js_json.decodeNumber(val$2);
+                    remaining = n !== undefined ? n | 0 : 0;
+                  } else {
+                    remaining = 0;
+                  }
+                  if (playerId !== undefined) {
+                    var tilesWithIds = tiles.map(function (letter, idx) {
+                          return [
+                                  letter,
+                                  idx.toString()
+                                ];
+                        });
+                    setPlayerId(function (param) {
+                          return playerId;
+                        });
+                    setLetters(function (param) {
+                          return tilesWithIds;
+                        });
+                    setTilesRemaining(function (param) {
+                          return remaining;
+                        });
+                    return setLoading(function (param) {
+                                return false;
+                              });
+                  }
+                  console.log("Missing playerId in response");
+                  setLoading(function (param) {
+                        return false;
+                      });
+                  joinInitiated.current = false;
+                  return ;
                 }
-              };
-              var response = await fetch("http://localhost:8080/join", options);
+                console.log("Failed to decode JSON object");
+                setLoading(function (param) {
+                      return false;
+                    });
+                joinInitiated.current = false;
+                return ;
+              }
+              catch (raw_exn){
+                var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
+                console.log("Failed to join game:", exn);
+                setLoading(function (param) {
+                      return false;
+                    });
+                joinInitiated.current = false;
+                return ;
+              }
+            };
+            joinGame();
+          }
+          
+        }), []);
+  React.useEffect((function () {
+          var pollGameState = async function () {
+            try {
+              var response = await fetch("http://localhost:8080/game_state");
               var json = await response.json();
               var obj = Js_json.decodeObject(json);
-              if (obj !== undefined) {
-                var val = Js_dict.get(obj, "playerId");
-                var playerId = val !== undefined ? Js_json.decodeString(val) : undefined;
-                var val$1 = Js_dict.get(obj, "tiles");
-                var tiles;
-                if (val$1 !== undefined) {
-                  var arr = Js_json.decodeArray(val$1);
-                  tiles = arr !== undefined ? Core__Array.filterMap(arr, Js_json.decodeString) : [];
-                } else {
-                  tiles = [];
-                }
-                var val$2 = Js_dict.get(obj, "tilesRemaining");
-                var remaining;
-                if (val$2 !== undefined) {
-                  var n = Js_json.decodeNumber(val$2);
-                  remaining = n !== undefined ? n | 0 : 0;
-                } else {
-                  remaining = 0;
-                }
-                if (playerId !== undefined) {
-                  var tilesWithIds = tiles.map(function (letter, idx) {
-                        return [
-                                letter,
-                                idx.toString()
-                              ];
-                      });
-                  setPlayerId(function (param) {
-                        return playerId;
-                      });
-                  setLetters(function (param) {
-                        return tilesWithIds;
-                      });
-                  setTilesRemaining(function (param) {
-                        return remaining;
-                      });
-                  return setLoading(function (param) {
-                              return false;
-                            });
-                }
-                console.log("Missing playerId in response");
-                return setLoading(function (param) {
-                            return false;
-                          });
+              if (obj === undefined) {
+                return ;
               }
-              console.log("Failed to decode JSON object");
-              return setLoading(function (param) {
-                          return false;
+              var val = Js_dict.get(obj, "tilesRemaining");
+              var remaining;
+              if (val !== undefined) {
+                var n = Js_json.decodeNumber(val);
+                remaining = n !== undefined ? n | 0 : tilesRemaining;
+              } else {
+                remaining = tilesRemaining;
+              }
+              return setTilesRemaining(function (param) {
+                          return remaining;
                         });
             }
-            catch (raw_exn){
-              var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
-              console.log("Failed to join game:", exn);
-              return setLoading(function (param) {
-                          return false;
-                        });
+            catch (exn){
+              console.log("Failed to fetch game state");
+              return ;
             }
           };
-          joinGame();
+          var intervalId = setInterval((function () {
+                  pollGameState();
+                }), 2000);
+          return (function () {
+                    clearInterval(intervalId);
+                  });
         }), []);
   var sendBoardToServer = async function (grid) {
     if (playerId !== undefined) {
@@ -365,7 +410,7 @@ function App(props) {
                                           className: "text-sm text-blue-600 mt-1"
                                         }) : null,
                                   JsxRuntime.jsx("p", {
-                                        children: "Tiles remaining in bag: " + match$6[0].toString(),
+                                        children: "Tiles remaining in bag: " + tilesRemaining.toString(),
                                         className: "text-sm text-gray-600 mt-1"
                                       }),
                                   JsxRuntime.jsx("p", {
