@@ -139,14 +139,12 @@ React.useEffect0(() => {
   let intervalId = Js.Global.setInterval(() => {
     pollGameState()->ignore
   }, 2000)
+
   
   // Cleanup
   Some(() => Js.Global.clearInterval(intervalId))
 })
 
-/* ---------- Shared Helpers ---------- */
-
-/* Build board map from grid */
 let buildBoardMap = grid =>
   grid
   ->Array.mapWithIndex((item, index) => {
@@ -165,7 +163,6 @@ let buildBoardMap = grid =>
       dict
     })
 
-/* Build rack from letters */
 let buildRack = letters =>
   letters->Array.map(((letter, _id)) => JSON.Encode.string(letter))
 
@@ -193,8 +190,6 @@ let postJson = (url, body) => {
   }
   fetchOptions(url, options)
 }
-
-/* ---------- Hint ---------- */
 
 let handleHint = async () => {
   switch playerId {
@@ -224,9 +219,7 @@ let handleHint = async () => {
   }
 }
 
-/* ---------- Validate ---------- */
-
-let sendBoardToServer = async grid => {
+let handleValidate = async () => {
   switch playerId {
   | None => alert("Not connected to game")
   | Some(id) => {
@@ -254,9 +247,9 @@ let sendBoardToServer = async grid => {
   }
 }
 
-let handleValidate = () => {
+/*let handleValidate = () => {
   sendBoardToServer(grid)->ignore
-}
+}*/
 
 /*
   let sendBoardToServer = async grid => {
@@ -537,4 +530,79 @@ let handleValidate = () => {
           </button>
           <button 
             onClick={_ => handleValidate()->ignore}
-            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+            {"Validate"->React.string}
+          </button>
+        </div>
+      </div>
+      
+      <div className="flex gap-3 mb-8 flex-wrap min-h-20 p-4 bg-gray-100 rounded overflow-visible">
+        {letters->Array.length > 0
+          ? letters
+            ->Array.mapWithIndex((letter, index) => {
+              let (actual_letter, id) = letter
+              <div
+                key={actual_letter ++ "-" ++ Int.toString(index)}
+                draggable=true
+                onDragStart={handleDragStart(letter)}
+                className="cursor-move px-4 py-2 bg-blue-300 rounded shadow-md text-xl font-bold select-none hover:bg-blue-400"
+              >
+                {React.string(actual_letter)}
+              </div>
+            })
+            ->React.array
+          : <div className="text-gray-500"> {"No letters available"->React.string} </div>
+        }
+      </div>
+
+      <h2 className="text-2xl font-bold mb-4"> {"Grid"->React.string} </h2>
+      <div className="inline-block border border-gray-400">
+        <div style={ReactDOM.Style.make(~display="grid", ~gridTemplateColumns="repeat(31, 2rem)", ())}>
+          {grid
+            ->Array.mapWithIndex((item, index) => {
+              let centerIndex = (gridRows * gridCols) / 2
+              let isCenter = index === centerIndex
+              let bgColor = isCenter ? "bg-blue-200" : "bg-white"
+              let (x, y) = indexToCoord(index)
+              let showLabel = x === 0 || y === 0
+              <div
+                key={Int.toString(index)}
+                onDrop={handleDrop(index)}
+                onDragOver={handleDragOver}
+                className={("relative w-8 h-8 border border-gray-300 flex items-center justify-center hover:bg-gray-50 " ++ bgColor )}
+              >
+                 //{showLabel ? 
+                 // <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 font-semibold pointer-events-none">
+                 //   {React.string(x === 0 ? Int.toString(y) : Int.toString(x))}
+                 // </div>
+                //: React.null}
+                {switch item {
+                | Some(item) => {
+                    let (actual_letter, id) = item
+                    <div
+                      onClick={_ => handleRemoveFromGrid(index, item)}
+                      className="cursor-pointer w-full h-full flex items-center justify-center bg-green-400 text-sm font-bold select-none hover:bg-red-400"
+                      title="Click to remove"
+                    >
+                      {React.string(actual_letter)}
+                    </div>
+                  }
+                | None => //React.null
+                {showLabel ? 
+                  <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 font-semibold pointer-events-none">
+                    {React.string(x === 0 ? Int.toString(y) : Int.toString(x))}
+                  </div>
+                : React.null}
+                }}
+              </div>
+            })
+            ->React.array}
+        </div>
+      </div>
+      
+      <p className="mt-4 text-sm text-gray-600">
+        {"Drag letters to the grid. Click placed letters to remove them."->React.string}
+      </p>
+    </div>
+  }
+}

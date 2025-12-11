@@ -241,7 +241,7 @@ function App(props) {
       return ;
     }
   };
-  var sendBoardToServer = async function (grid) {
+  var handleValidate = async function () {
     if (playerId !== undefined) {
       try {
         var board = buildBoardMap(grid);
@@ -446,7 +446,7 @@ function App(props) {
                                         children: "Validate",
                                         className: "px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600",
                                         onClick: (function (param) {
-                                            sendBoardToServer(grid);
+                                            handleValidate();
                                           })
                                       })
                                 ],
@@ -527,4 +527,18 @@ function App(props) {
                         className: "inline-block border border-gray-400"
                       }),
                   JsxRuntime.jsx("p", {
-                        children: "Drag letters to the grid. Click placed letters to remove 
+                        children: "Drag letters to the grid. Click placed letters to remove them.",
+                        className: "mt-4 text-sm text-gray-600"
+                      })
+                ],
+                className: "max-w-4xl mx-auto p-8 pt-150 overflow-auto"
+              });
+  }
+}
+
+var make = App;
+
+export {
+  make ,
+}
+/* react Not a pure module */
