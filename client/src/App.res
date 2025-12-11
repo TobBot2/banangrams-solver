@@ -239,12 +239,30 @@ React.useEffect0(() => {
               }
             | None => 0
             }
+
+            setLetters(prevLetters => {
+              let maxId = prevLetters
+                ->Array.map(((_, id)) => {
+                  switch Int.fromString(id) {
+                  | Some(n) => n
+                  | None => 0
+                  }
+                })
+                ->Array.reduce(0, (acc, n) => max(acc, n))
+              
+              let newTilesWithIds = tiles->Array.mapWithIndex((letter, idx) => 
+                (letter, Int.toString(maxId + idx + 1))
+              )
+              
+              Array.concat(prevLetters, newTilesWithIds)
+            })
             
-            let tilesWithIds = tiles->Array.mapWithIndex((letter, idx) => 
+            /*let tilesWithIds = tiles->Array.mapWithIndex((letter, idx) => 
               (letter, Int.toString(idx))
             )
+
             
-            setLetters(_ => tilesWithIds)
+            setLetters(_ => tilesWithIds)*/
             setTilesRemaining(_ => remaining)
           }
         | None => Console.log("Failed to decode JSON object")

@@ -3,18 +3,17 @@ open Lib
 open Bananagram
 
 (* Player state management *)
+(*
 type player_state = {
   id: string;
   tiles: char list;
   board: (int * int * char) list; (* row, col, letter *)
   last_active: float;
-}
+}*)
 
 (* Global game state *)
-let players_ref : (string, player_state) Hashtbl.t = Hashtbl.create (module String)
+let players_ref : (string, Player_state.player_state) Hashtbl.t = Hashtbl.create (module String)
 let players_mutex = Lwt_mutex.create ()
-
-
 
 let dictionary_ref : Dictionary.t option ref = ref None
 
@@ -39,17 +38,17 @@ let tile_bag_mutex = Lwt_mutex.create ()
 
 
 (* Generate unique player ID *)
-let generate_player_id () =
+(*let generate_player_id () =
   let timestamp = 
     Time_ns.now () 
     |> Time_ns.to_span_since_epoch 
     |> Time_ns.Span.to_int_sec
   in
   let random = Random.int 10000 in
-  sprintf "player_%d_%d" timestamp random
+  sprintf "player_%d_%d" timestamp random*)
 
 (* Initialize or get player *)
-let get_or_create_player player_id : player_state Lwt.t =
+let get_or_create_player player_id : Player_state.player_state Lwt.t =
   Lwt_mutex.with_lock players_mutex (fun () ->
     match Hashtbl.find players_ref player_id with
     | Some player ->
@@ -76,7 +75,7 @@ let get_or_create_player player_id : player_state Lwt.t =
           |> Time_ns.Span.to_int_sec 
           |> Float.of_int
         in
-        let new_player = {
+        let new_player: Player_state.player_state= {
           id = player_id;
           tiles = tiles;
           board = [];
@@ -92,7 +91,7 @@ let get_or_create_player player_id : player_state Lwt.t =
 (* Join game - returns player ID *)
 let join_game : Dream.route =
   Dream.post "/join" (fun _ ->
-    let player_id = generate_player_id () in
+    let player_id = Player_state.generate_player_id () in
     let%lwt player = get_or_create_player player_id in
     
     let response = `Assoc [
@@ -147,7 +146,8 @@ let draw_tiles : Dream.route =
             let updated_player = { player with tiles = all_tiles } in
             Hashtbl.set players_ref ~key:player_id ~data:updated_player;
             
-            Lwt.return_ok all_tiles
+            (*Lwt.return_ok all_tiles*)
+            Lwt.return_ok new_tiles
           ) in
                     (match updated_tiles with
           | Ok tiles ->

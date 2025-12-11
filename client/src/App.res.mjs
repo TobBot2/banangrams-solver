@@ -3,6 +3,7 @@
 import * as React from "react";
 import * as Js_dict from "rescript/lib/es6/js_dict.js";
 import * as Js_json from "rescript/lib/es6/js_json.js";
+import * as Core__Int from "@rescript/core/src/Core__Int.res.mjs";
 import * as Core__JSON from "@rescript/core/src/Core__JSON.res.mjs";
 import * as Caml_option from "rescript/lib/es6/caml_option.js";
 import * as Core__Array from "@rescript/core/src/Core__Array.res.mjs";
@@ -259,14 +260,28 @@ function App(props) {
           } else {
             remaining = 0;
           }
-          var tilesWithIds = tiles.map(function (letter, idx) {
-                return [
-                        letter,
-                        idx.toString()
-                      ];
-              });
-          setLetters(function (param) {
-                return tilesWithIds;
+          setLetters(function (prevLetters) {
+                var maxId = Core__Array.reduce(prevLetters.map(function (param) {
+                          var n = Core__Int.fromString(param[1], undefined);
+                          if (n !== undefined) {
+                            return n;
+                          } else {
+                            return 0;
+                          }
+                        }), 0, (function (acc, n) {
+                        if (acc > n) {
+                          return acc;
+                        } else {
+                          return n;
+                        }
+                      }));
+                var newTilesWithIds = tiles.map(function (letter, idx) {
+                      return [
+                              letter,
+                              ((maxId + idx | 0) + 1 | 0).toString()
+                            ];
+                    });
+                return prevLetters.concat(newTilesWithIds);
               });
           return setTilesRemaining(function (param) {
                       return remaining;
