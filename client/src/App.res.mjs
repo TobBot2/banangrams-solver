@@ -156,9 +156,21 @@ function App(props) {
               } else {
                 remaining = tilesRemaining;
               }
-              return setTilesRemaining(function (param) {
-                          return remaining;
-                        });
+              setTilesRemaining(function (param) {
+                    return remaining;
+                  });
+              var val$1 = Js_dict.get(obj, "winner");
+              var winner = val$1 !== undefined ? Js_json.decodeString(val$1) : undefined;
+              if (winner !== undefined && playerId !== undefined) {
+                if (winner === playerId) {
+                  window.alert("You are the winner!");
+                } else {
+                  window.alert("You are the loser!");
+                }
+                return ;
+              } else {
+                return ;
+              }
             }
             catch (exn){
               console.log("Failed to fetch game state");

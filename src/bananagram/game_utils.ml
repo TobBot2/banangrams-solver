@@ -15,23 +15,9 @@ let read_letter_list filename : char list =
         | _ -> read_lines acc)
     | None ->
         In_channel.close ic;
-        Printf.printf "Returning %d tiles in dict\n%!" (List.length acc);
         List.rev acc
   in
   read_lines []
-
-
-let load_dictionary filepath dictionary_ref : unit=
-  match Dictionary.load filepath with
-  | Ok dict -> 
-      dictionary_ref := Some dict;
-      Printf.printf "Dictionary loaded from %s\n%!" filepath
-  | Error err ->
-      Printf.printf "Failed to load dictionary: %s\n%!" err
-
-let load_solver dict_filepath dist_filepath solver_utils_ref : unit =
-  solver_utils_ref := Some (Solver.set_up_utils dict_filepath dist_filepath);
-  Printf.printf "Solver loaded from \n  dictionary: %s\n  distribution: %s\n%!" dict_filepath dist_filepath
 
 let peek_random_tiles_from_bag (tile_bag : char list) (count : int) : char list * char list =
   let bag_size = List.length tile_bag in
@@ -40,6 +26,4 @@ let peek_random_tiles_from_bag (tile_bag : char list) (count : int) : char list 
   else
     let shuffled = List.permute ~random_state:(Random.State.make_self_init ()) tile_bag in
     let result, remaining = List.split_n shuffled actual_count in
-   (*let result = List.sub shuffled ~pos:0 ~len:actual_count in*)
-    Printf.printf "Returning %d tiles\n%!" (List.length result);
     (result, remaining)

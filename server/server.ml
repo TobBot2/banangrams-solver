@@ -4,21 +4,16 @@ open Bananagram
 
 (* Global game state *)
 let players_ref : (string, Player_state.player_state) Hashtbl.t = Hashtbl.create (module String)
-(*let players_mutex = Lwt_mutex.create ()*)
+let winner : string option = None
+let winner_ref = ref winner
 
 let dictionary = 
   let filepath = "dictionary.txt" in
   match Dictionary.load filepath with
-  | Ok dict -> 
-    Printf.printf "Dictionary loaded from %s\n%!" filepath;
-    Some dict
-  | Error err ->
-    Printf.printf "Failed to load dictionary: %s\n%!" err;
-    None
+  | Ok dict -> Some dict
+  | Error _ -> None
   
-let solver_utils =
-  Printf.printf "Solver utils loaded\n";
-  Solver.set_up_utils "dictionary.txt" "banana-dist.txt"
+let solver_utils = Solver.set_up_utils "dictionary.txt" "banana-dist.txt"
 
 let initial_tile_bag : char list = Game_utils.read_letter_list "banana-dist.txt"
 let tile_bag_ref = ref initial_tile_bag
@@ -41,8 +36,6 @@ let join_game : Dream.route =
       response
   )
 
-
-
 (* Draw more tiles for a specific player *)
 let draw_tiles : Dream.route =
   Dream.post "/draw_tiles" (fun request ->
@@ -63,21 +56,15 @@ let draw_tiles : Dream.route =
                 Lwt.return_error "Player not found"
             | Some player ->
                 let new_tiles, remaining = Game_utils.peek_random_tiles_from_bag !tile_bag_ref count in
-                Printf.printf "Player %s requested %d — returned %d tiles: %s\n%!"
-                  player_id count (List.length new_tiles) (String.of_char_list new_tiles);
-                
-              tile_bag_ref := remaining
-            ;
-            Printf.printf "Tiles left in bag: %d\n%!" (List.length !tile_bag_ref);
+                tile_bag_ref := remaining;
             
-            let all_tiles = player.tiles @ new_tiles in
-            let updated_player = { player with tiles = all_tiles } in
-            Hashtbl.set players_ref ~key:player_id ~data:updated_player;
+                let all_tiles = player.tiles @ new_tiles in
+                let updated_player = { player with tiles = all_tiles } in
+                Hashtbl.set players_ref ~key:player_id ~data:updated_player;
             
-            (*Lwt.return_ok all_tiles*)
-            Lwt.return_ok new_tiles
+                Lwt.return_ok new_tiles
           ) in
-                    (match updated_tiles with
+          (match updated_tiles with
           | Ok tiles ->
               let response = `Assoc [
                 ("tiles", `List (List.map tiles ~f:(fun c -> `String (String.make 1 c))));
@@ -104,6 +91,7 @@ let game_state : Dream.route =
   Dream.get "/game_state" (fun _ ->
     let response = `Assoc [
       ("tilesRemaining", `Int (List.length !tile_bag_ref));
+      ("winner", match !winner_ref with Some id -> `String id | None -> `Null);
     ] |> Yojson.Basic.to_string in
     
     Dream.json ~status:`OK
@@ -152,6 +140,8 @@ let validate : Dream.route =
     try
       match Yojson.Basic.from_string body with 
       | `Assoc pairs ->
+          let player_id = List.Assoc.find_exn pairs ~equal:String.equal "playerId" 
+            |> Yojson.Basic.Util.to_string in
           let board_data = List.Assoc.find_exn pairs ~equal:String.equal "board" in
           let tiles = match board_data with
           | `Assoc board_pairs ->
@@ -178,7 +168,7 @@ let validate : Dream.route =
                 | _ -> None)
             | _ -> []
             in
-          
+
           (match Banana_gram.Board.of_tiles tiles with
           | Error err ->
               Dream.json ~status:`Bad_Request 
@@ -211,26 +201,29 @@ let validate : Dream.route =
                               let new_tiles, remaining = 
                                 Game_utils.peek_random_tiles_from_bag !tile_bag_ref num_players 
                               in
-                              
-                              (* Update the tile bag *)
-                              tile_bag_ref := remaining;
-                              Printf.printf "PEEL triggered! Drew %d tiles, %d remaining in bag\n%!" 
-                                (List.length new_tiles) (List.length remaining);
-                              
-                              (* Distribute one tile to each player's peel_tiles *)
-                              List.iter2_exn player_ids new_tiles ~f:(fun player_id tile ->
-                                match Hashtbl.find players_ref player_id with
-                                | Some player ->
-                                    let updated_player = { 
-                                      player with 
-                                      peel_tiles = tile :: player.peel_tiles 
-                                    } in
-                                    Hashtbl.set players_ref ~key:player_id ~data:updated_player;
-                                    Printf.printf "Player %s received peel tile: %c\n%!" player_id tile
-                                | None -> ()
-                              );
-                              
-                              Lwt.return_unit
+
+                              (* not enough tiles in bag to take... we have a winner! *)
+                              if List.length new_tiles < num_players then begin
+                                winner_ref := Some player_id;
+                                Lwt.return_unit
+                              end else begin
+                                (* Update the tile bag *)
+                                tile_bag_ref := remaining;
+                                
+                                (* Distribute one tile to each player's peel_tiles *)
+                                List.iter2_exn player_ids new_tiles ~f:(fun player_id tile ->
+                                  match Hashtbl.find players_ref player_id with
+                                  | Some player ->
+                                      let updated_player = { 
+                                        player with 
+                                        peel_tiles = tile :: player.peel_tiles 
+                                      } in
+                                      Hashtbl.set players_ref ~key:player_id ~data:updated_player
+                                  | None -> ()
+                                );
+                                
+                                Lwt.return_unit
+                              end
                             )
                           else
                             Lwt.return_unit

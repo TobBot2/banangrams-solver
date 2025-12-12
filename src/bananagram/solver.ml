@@ -60,7 +60,6 @@ let create_anagram_map (words : Banana_gram.Tile.Value.t list list) : Utils.Word
 
 let create_letter_scores_map (distribution_filename : string) : int Utils.ScoreMap.t =
   (* make list of letters to loop through *)
-  (* probably should be looping through list of valid tile values, not creating list *)
   let letters = List.init 26 ~f:(
     fun i ->
       let a_int = Char.to_int 'A' in
