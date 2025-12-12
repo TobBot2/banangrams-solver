@@ -8,23 +8,30 @@ Initial Project Idea Link: https://docs.google.com/document/d/1Odw2qfVwJuNVmxbHs
 
 A multiplayer Bananagrams game implementation with an OCaml backend and ReScript frontend.
 
-Project Status
-WORKING:
-Backend: Most backend functionality is complete and running
-    Generic library (Tile, Word, Board modules using functors)
-    Game validation logic
-    Server functionality (server.ml)
+Completed Features
 
-Frontend: Basic game interface is working
-Integration: Frontend and backend communicate successfully
-Tests: Unit tests for Tile, Word, and Board modules
-Build system: Dune build configured and working
+Backend: Fully functional
 
-In Progress
+Generic library (Tile, Word, Board modules using functors)
+Game validation logic with dictionary checking
+Word extraction and board connectivity validation
+Server functionality with Dream web framework
+Multiplayer support with player state management
+Tile bag distribution 
+Solver implementation
 
-Solver: Fully written but not yet integrated into the main codebase
-Multiplayer: Working on making it a proper two-player game, using the feedback from the inital submission. Multiplayer mode will be designed by including player state management and a /join endpoint so players can join the game
-Frontend improvements: Several known issues being addressed. On webpage reload (without reloading the server), the tiles reload but the tile_bag does not. This will be useful for multiplayer so the tile bag does not reset if one player reloads their game, but local persistence for the tile rack has to be implemented so new tiles are not returned on every reload. Also, there are still edge cases when the "Dump" button is hit multiple times.
+
+Frontend: Fully operational
+
+ReScript-based interactive UI
+Drag-and-drop tile placement
+Board validation
+Rack management
+Multi-player game mode
+
+
+Tests: Comprehensive unit tests for core modules
+Build System: Dune build configured and working
 
 Project Structure
 Generic Library
@@ -45,27 +52,35 @@ Frontend: ReScript-based UI
 Build & Run 
 Prerequisites
 
-OCaml and Dune installed
+Backend
+
+OCaml (≥ 4.14)
+Dune (≥ 3.0)
+opam packages:
 Node.js installed
-opam packages: core, dream, ppx_jane, bisect_ppx
+npm
+opam packages: core dream yojson ppx_jane bisect_ppx ounit2 lwt
 
 Build Steps
 
-Build the project (do this first): dune build
-Run Unit tests (optional): dune test
+1. Build the Backend
+From the project root (bananagrams-solver/): dune build 
 
 Running the Game
 You need three separate terminals:
 1. Terminal 1: Frontend Build (from the client folder: cd client)
-# First time only:
+cd client
+
+First time only:
 npm install
 
-# Then run one of: 
-npm run res:dev    # For development
-# OR
-npm run res:build  # For production build
+Then run:
+npm run res:dev    # Development mode with hot reload
+OR
+npm run res:build  # Production build
 
 2. Terminal 2: Frontend Dev Server (from the client folder: cd client)
+cd client
 npm run dev
 This will output a localhost address (e.g., http://localhost:5173).
 Note: The game runs on this address, NOT localhost:8080.
@@ -75,13 +90,6 @@ Note: The game runs on this address, NOT localhost:8080.
 
 Play the Game
 Open the localhost address from Terminal 2 in your browser and start playing!
-
-Future Work
-
-Complete solver integration
-Finish two-player game
-Frontend polish and bug fixes
-Expand test coverage. After looking at previous examples, we'll be focusing on robust library testing instead of frontend testing / server testing, because the server by default has some error handling, and outcomes can be tested by using the frontend. However, we will have tests for server utils.
 
 Contributors
 Malavika Nair, Lulu Grubb, Trevor Black 
