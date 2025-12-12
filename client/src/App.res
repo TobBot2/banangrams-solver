@@ -112,7 +112,7 @@ let make = () => {
 
   // Poll for game state updates every 2 seconds
 React.useEffect1(() => {
-  let pollGameState = async () => {
+    let pollGameState = async () => {
     try {
       let response = await fetch("http://localhost:8080/game_state")
       let json = await response->json
@@ -122,11 +122,31 @@ React.useEffect1(() => {
           let remaining = switch obj->Js.Dict.get("tilesRemaining") {
           | Some(val) => switch val->Js.Json.decodeNumber {
             | Some(n) => Float.toInt(n)
-            | None => tilesRemaining  // Keep current value on error
+            | None => tilesRemaining
             }
           | None => tilesRemaining
           }
           setTilesRemaining(_ => remaining)
+          
+          let winner = switch obj->Js.Dict.get("winner") {
+          | Some(val) => val->Js.Json.decodeString 
+          | None => None
+          }
+          switch winner {
+          | Some(id) => {
+              switch playerId {
+              | Some(currentId) => {
+                  if id == currentId {
+                    alert("You are the winner!")
+                  } else {
+                    alert("You are the loser!")
+                  }
+                }
+              | None => ()
+              }
+            }
+          | None => ()
+          }
         }
       | None => ()
       }
