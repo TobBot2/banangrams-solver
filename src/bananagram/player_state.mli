@@ -2,7 +2,6 @@ type player_state = {
   id: string;
   tiles: char list;
   board: (int * int * char) list; (* row, col, letter *)
-  (*last_active: float;*)
   peel_tiles: char list;
 }
 (** The player state, with their tiles, board, id and additional peel tiles *)

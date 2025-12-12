@@ -24,6 +24,7 @@ let make = () => {
   // Use ref because it updates synchronously, unlike state
   let joinInitiated = React.useRef(false)
 
+  // helper function to translate the indices of the grid to coordinates
   let indexToCoord = index => {
     let row = index / gridCols
     let col = mod(index, gridCols)
@@ -34,7 +35,7 @@ let make = () => {
     (x, y)
   }
 
-  // Join game on mount
+  // Join game on mount if not already joined
   React.useEffect0(() => {
     if !joinInitiated.current {
       joinInitiated.current = true 
@@ -51,7 +52,6 @@ let make = () => {
     // Decode to object/dict
     switch json->Js.Json.decodeObject {
     | Some(obj) => {
-        // Extract fields safely
         let playerId = switch obj->Js.Dict.get("playerId") {
         | Some(val) => val->Js.Json.decodeString
         | None => None
@@ -105,12 +105,12 @@ let make = () => {
     }
   }
 }
-  joinGame()->ignore  // Call the async function and ignore the promise
+  joinGame()->ignore
     }
     None  // Return None for cleanup
   })
 
-  // Poll for game state updates every 2 seconds
+ // Poll for game state updates every 2 seconds (for peel and winner and tile_bag)
 React.useEffect1(() => {
     let pollGameState = async () => {
     try {
@@ -225,11 +225,10 @@ React.useEffect1(() => {
     pollPeelState()->ignore
   }, 2000)
 
-  
-  // Cleanup
   Some(() => Js.Global.clearInterval(intervalId))
 }, [playerId])
 
+//takes the frontend grid and builds the board to be returned to backend with coordinates
 let buildBoardMap = grid =>
   grid
   ->Array.mapWithIndex((item, index) => {
@@ -248,10 +247,11 @@ let buildBoardMap = grid =>
       dict
     })
 
+//helper to build rack
 let buildRack = letters =>
   letters->Array.map(((letter, _id)) => JSON.Encode.string(letter))
 
-/* Build a JSON payload with variable fields */
+//Build a JSON payload
 let buildPayload = (playerId, ~board=?, ~rack=?) => {
   let payload = Js.Dict.empty()
   Js.Dict.set(payload, "playerId", JSON.Encode.string(playerId))
@@ -266,7 +266,7 @@ let buildPayload = (playerId, ~board=?, ~rack=?) => {
   payload->JSON.Encode.object->JSON.stringify
 }
 
-/* POST helper */
+// POST helper
 let postJson = (url, body) => {
   let options = {
     "method": "POST",
@@ -276,6 +276,7 @@ let postJson = (url, body) => {
   fetchOptions(url, options)
 }
 
+//send the board, rack and id to get a hint string
 let handleHint = async () => {
   switch playerId {
   | None => alert("Not connected to game")
@@ -388,12 +389,6 @@ let handleValidate = async () => {
               Array.concat(prevLetters, newTilesWithIds)
             })
             
-            /*let tilesWithIds = tiles->Array.mapWithIndex((letter, idx) => 
-              (letter, Int.toString(idx))
-            )
-
-            
-            setLetters(_ => tilesWithIds)*/
             setTilesRemaining(_ => remaining)
           }
         | None => Console.log("Failed to decode JSON object")
@@ -405,6 +400,7 @@ let handleValidate = async () => {
   }
 }
 
+//Drag/drop/remove functionality on the grid
   let handleDragStart = tileWithId => e => {
     setDragged(_ => Some(tileWithId))
   }
@@ -536,11 +532,6 @@ let handleValidate = async () => {
                 onDragOver={handleDragOver}
                 className={("relative w-8 h-8 border border-gray-300 flex items-center justify-center hover:bg-gray-50 " ++ bgColor )}
               >
-                 //{showLabel ? 
-                 // <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 font-semibold pointer-events-none">
-                 //   {React.string(x === 0 ? Int.toString(y) : Int.toString(x))}
-                 // </div>
-                //: React.null}
                 {switch item {
                 | Some(item) => {
                     let (actual_letter, id) = item
@@ -552,7 +543,7 @@ let handleValidate = async () => {
                       {React.string(actual_letter)}
                     </div>
                   }
-                | None => //React.null
+                | None => 
                 {showLabel ? 
                   <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 font-semibold pointer-events-none">
                     {React.string(x === 0 ? Int.toString(y) : Int.toString(x))}
